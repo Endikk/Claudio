@@ -7,7 +7,7 @@ name: Release
 on:
   push:
     branches: [main]
-    paths: ['Directory.Build.props']
+    paths: ['Directory.Build.props', '.github/workflows/release.yml']
     tags: ['v*']
 
 permissions:
@@ -77,14 +77,17 @@ jobs:
         if: steps.version.outputs.skip != 'true'
         shell: pwsh
         run: |
-          # A tag with a suffix (v1.0.0-beta.1) is a pre-release: installed copies on the stable
-          # line never update to it.
-          $pre = if ($env:VERSION.Contains('-')) { @('--pre') } else { @() }
+          # A version with a suffix (v1.0.0-beta.1) is a pre-release: installed copies on the
+          # stable line never update to it. The arguments are built as a list on purpose: a
+          # one-item array would reach vpk as a string, then letter by letter.
           $first = $true
           foreach ($rid in 'win-x64', 'win-arm64') {
-            $merge = if ($first) { @() } else { @('--merge') }
+            $extra = [System.Collections.Generic.List[string]]::new()
+            if ($env:VERSION.Contains('-')) { $extra.Add('--pre') }
+            if (-not $first) { $extra.Add('--merge') }
             vpk upload github --repoUrl "https://github.com/${{ github.repository }}" --token "${{ github.token }}" `
-              --channel $rid --outputDir releases --publish --releaseName "Claudio $env:VERSION" --tag $env:VERSION --targetCommitish ${{ github.sha }} @pre @merge
+              --channel $rid --outputDir releases --publish --releaseName "Claudio $env:VERSION" `
+              --tag $env:VERSION --targetCommitish ${{ github.sha }} $extra.ToArray()
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $first = $false
           }
