@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
-## Unreleased
+## 1.0.0 (unreleased)
 
 ### Added
 
@@ -12,5 +12,6 @@ All notable changes to this project are documented here. Dates are release dates
 - Claudy's look, read from its exported design tokens, and its pixel mascot, drawn from the same
   frames.
 - A first floating card with the typing mascot.
+- Claudy's icon, the pixel mascot at its desk, on the desktop, in the Start menu and the taskbar.
 - An installer: Claudio's icon on the desktop and in the Start menu, found by Windows search,
   installed without admin rights and updated in place. One Claudio runs at a time.
