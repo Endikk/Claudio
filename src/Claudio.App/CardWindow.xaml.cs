@@ -54,7 +54,7 @@ public sealed partial class CardWindow : Window
         PercentSign.Visibility = card.IsMeasured ? Visibility.Visible : Visibility.Collapsed;
         Detail.Text = card.Detail;
 
-        var tint = Tint(card);
+        var tint = TintOf(card);
         Mascot.Tint = tint;
         Mascot.IsTyping = card.IsRunning;
 
@@ -73,7 +73,7 @@ public sealed partial class CardWindow : Window
     }
 
     /// <summary>The gauge's own accent, amber from 75 %, danger from 90 %: Claudy's bands.</summary>
-    private Rgba Tint(CardSummary card)
+    public Rgba TintOf(CardSummary card)
     {
         if (card.IsDanger)
         {
@@ -84,6 +84,19 @@ public sealed partial class CardWindow : Window
             return _tokens.Color("color.accent.amber");
         }
         return _tokens.Color($"color.accent.{card.Accent.ToString().ToLowerInvariant()}");
+    }
+
+    /// <summary>The tray icon's left click: the card comes and goes, and keeps its place.</summary>
+    public void Toggle()
+    {
+        if (AppWindow.IsVisible)
+        {
+            AppWindow.Hide();
+        }
+        else
+        {
+            AppWindow.Show();
+        }
     }
 
     private static SolidColorBrush Brush(Rgba colour) =>
