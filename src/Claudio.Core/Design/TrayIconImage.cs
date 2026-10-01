@@ -28,6 +28,52 @@ public static class TrayIconImage
         return pixels;
     }
 
+    /// <summary>
+    /// The frame to paint into a <paramref name="size"/>-pixel icon. The mascot is 29 cells wide:
+    /// from 29 pixels up it is drawn whole, one or more pixels per cell. Below, at the 16 and 24
+    /// pixels of the notification area, averaging it down blurs it into a smudge; it is redrawn at
+    /// half size instead, one pixel per block of four cells, so every pixel stays a pixel-art ink.
+    /// </summary>
+    public static SpriteFrame ForIcon(SpriteFrame frame, int size) =>
+        size >= Math.Max(frame.Columns, frame.Rows.Count) ? frame : Halve(frame);
+
+    /// <summary>
+    /// Half the frame, one cell per block of four: the eye wins any block it is in, a block with
+    /// fewer than two inked cells stays empty, otherwise the ink most of the block holds, the
+    /// outline yielding to the body on a tie. Blocks start on the second row, which keeps each eye
+    /// in a single cell.
+    /// </summary>
+    public static SpriteFrame Halve(SpriteFrame frame)
+    {
+        var rows = new List<string>();
+        var height = frame.Rows.Count;
+        var width = frame.Columns;
+        for (var y = 1; y < height; y += 2)
+        {
+            var line = new char[(width + 1) / 2];
+            for (var x = 0; x < width; x += 2)
+            {
+                var inks = new List<char>(4);
+                for (var dy = 0; dy < 2; dy++)
+                {
+                    for (var dx = 0; dx < 2; dx++)
+                    {
+                        if (y + dy < height && x + dx < width && frame.Rows[y + dy][x + dx] != '.')
+                        {
+                            inks.Add(frame.Rows[y + dy][x + dx]);
+                        }
+                    }
+                }
+                line[x / 2] = inks.Contains('E') ? 'E'
+                    : inks.Count < 2 ? '.'
+                    : inks.GroupBy(ink => ink).OrderByDescending(group => group.Count()).ThenBy(group => group.Key == 'o' ? 1 : 0)
+                          .ThenBy(group => group.Key).First().Key;
+            }
+            rows.Add(new string(line));
+        }
+        return frame with { Name = frame.Name + "-half", Rows = rows };
+    }
+
     /// <summary>The image centred in a <paramref name="size"/> square, its proportions kept.</summary>
     public static Rgba[,] Fit(Rgba[,] image, int size)
     {
@@ -85,6 +131,31 @@ public static class TrayIconImage
             }
         }
         return square;
+    }
+
+    /// <summary>
+    /// The icon with Claudy's coral update dot in its top-right corner, where the sprite is empty:
+    /// a new version is out. A quarter of the icon wide, whole pixels, no anti-aliasing to blur it.
+    /// </summary>
+    public static Rgba[,] WithUpdateDot(Rgba[,] square, Rgba colour)
+    {
+        var size = square.GetLength(0);
+        var diameter = Math.Max(3, size / 4);
+        var dotted = (Rgba[,])square.Clone();
+        var radius = diameter / 2.0;
+        for (var y = 0; y < diameter; y++)
+        {
+            for (var x = 0; x < diameter; x++)
+            {
+                var dx = x + 0.5 - radius;
+                var dy = y + 0.5 - radius;
+                if ((dx * dx) + (dy * dy) <= (radius * radius) + 0.25)
+                {
+                    dotted[y, size - diameter + x] = colour;
+                }
+            }
+        }
+        return dotted;
     }
 
     /// <summary>

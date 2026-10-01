@@ -51,6 +51,75 @@ public sealed class Mascot
 
     public IEnumerable<char> Inks => _inks.Keys;
 
+    /// <summary>Length of the explosion's one-off part, before the dead loop starts.</summary>
+    public TimeSpan OverloadIntro =>
+        TimeSpan.FromMilliseconds(Overload.Take(Overload.Count - DeadLoopCount).Sum(frame => frame.Milliseconds));
+
+    /// <summary>
+    /// The explosion frame to show <paramref name="elapsed"/> after the quota filled up. Null means
+    /// the explosion was not witnessed (Claudio opened already full): straight to the dead loop.
+    /// </summary>
+    public int OverloadFrameIndex(TimeSpan? elapsed)
+    {
+        var deadStart = Overload.Count - DeadLoopCount;
+        if (elapsed is not { } time)
+        {
+            return deadStart;
+        }
+        var remaining = Math.Max(time.TotalMilliseconds, 0);
+        for (var index = 0; index < deadStart; index++)
+        {
+            if (remaining < Overload[index].Milliseconds)
+            {
+                return index;
+            }
+            remaining -= Overload[index].Milliseconds;
+        }
+        var loop = Math.Max(Overload.Skip(deadStart).Sum(frame => frame.Milliseconds), 1);
+        var inLoop = (long)remaining % loop;
+        for (var index = deadStart; index < Overload.Count; index++)
+        {
+            if (inLoop < Overload[index].Milliseconds)
+            {
+                return index;
+            }
+            inLoop -= Overload[index].Milliseconds;
+        }
+        return Overload.Count - 1;
+    }
+
+    /// <summary>Arm up and smiling: the wave's still frame when Windows' animations are off, as Claudy's under "Reduce motion".</summary>
+    public SpriteFrame WaveStill => Wave.FirstOrDefault(frame => frame.Name == "04-wave-up") ?? Wave[0];
+
+    /// <summary>The wave frame on screen <paramref name="elapsed"/> into its loop.</summary>
+    public int WaveFrameIndex(TimeSpan elapsed)
+    {
+        var loop = Math.Max(Wave.Sum(frame => frame.Milliseconds), 1);
+        var remaining = (long)elapsed.TotalMilliseconds % loop;
+        for (var index = 0; index < Wave.Count; index++)
+        {
+            if (remaining < Wave[index].Milliseconds)
+            {
+                return index;
+            }
+            remaining -= Wave[index].Milliseconds;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Rows any wave frame draws on. The grid keeps empty rows for the export's margin; cropping
+    /// them lets the waving mascot take the typing one's place at the same scale.
+    /// </summary>
+    public (int First, int Count) WaveContentRows
+    {
+        get
+        {
+            var used = Wave.SelectMany(frame => Enumerable.Range(0, frame.Rows.Count).Where(row => frame.Rows[row].Any(ink => ink != '.'))).ToList();
+            return used.Count == 0 ? (0, 0) : (used.Min(), used.Max() - used.Min() + 1);
+        }
+    }
+
     /// <summary>
     /// The colours stacked on one ink, bottom first: the tint for the body, tokens for the rest.
     /// An unknown ink, or '.', draws nothing.

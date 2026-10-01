@@ -22,7 +22,7 @@ public sealed class AccountClientTests
     [Fact]
     public async Task ReadsTheQuotasAndTheProfile()
     {
-        var server = new StubAnthropic { Usage = (HttpStatusCode.OK, Usage), Profile = (HttpStatusCode.OK, Profile) };
+        var server = new StubbedAnthropic { Usage = (HttpStatusCode.OK, Usage), Profile = (HttpStatusCode.OK, Profile) };
         using var client = Client(server, Token("a"));
 
         var payload = await client.FetchAsync(TestContext.Current.CancellationToken);
@@ -38,7 +38,7 @@ public sealed class AccountClientTests
     [Fact]
     public async Task ServesTheCacheForAMinute()
     {
-        var server = new StubAnthropic { Usage = (HttpStatusCode.OK, Usage) };
+        var server = new StubbedAnthropic { Usage = (HttpStatusCode.OK, Usage) };
         using var client = Client(server, Token("a"));
 
         await client.FetchAsync(TestContext.Current.CancellationToken);
@@ -54,7 +54,7 @@ public sealed class AccountClientTests
     [Fact]
     public async Task AFailureKeepsTheLastReadingMarkedStaleAndBacksOff()
     {
-        var server = new StubAnthropic { Usage = (HttpStatusCode.OK, Usage) };
+        var server = new StubbedAnthropic { Usage = (HttpStatusCode.OK, Usage) };
         using var client = Client(server, Token("a"));
         await client.FetchAsync(TestContext.Current.CancellationToken);
 
@@ -70,7 +70,7 @@ public sealed class AccountClientTests
         await client.FetchAsync(TestContext.Current.CancellationToken);
         Assert.Equal(2, server.UsageRequests);
 
-        client.ResetBackoff();
+        Assert.True(client.ResetBackoff());
         await client.FetchAsync(TestContext.Current.CancellationToken);
         Assert.Equal(3, server.UsageRequests);
     }
@@ -78,7 +78,7 @@ public sealed class AccountClientTests
     [Fact]
     public async Task AWindowPastItsResetIsDroppedFromAStaleReading()
     {
-        var server = new StubAnthropic { Usage = (HttpStatusCode.OK, Usage) };
+        var server = new StubbedAnthropic { Usage = (HttpStatusCode.OK, Usage) };
         using var client = Client(server, Token("a"));
         await client.FetchAsync(TestContext.Current.CancellationToken);
 
@@ -93,9 +93,10 @@ public sealed class AccountClientTests
     [Fact]
     public async Task On401ItRereadsClaudeCodesToken()
     {
-        var server = new StubAnthropic { Usage = (HttpStatusCode.Unauthorized, "{}") };
-        var tokens = new Queue<OAuthToken?>([Token("old"), Token("new")]);
-        using var client = new ClaudeAccountClient(new HttpClient(server), () => tokens.Count > 0 ? tokens.Dequeue() : Token("new"), () => _now);
+        var server = new StubbedAnthropic { Usage = (HttpStatusCode.Unauthorized, "{}") };
+        var tokens = new Queue<OAuthCredentials?>([Token("old"), Token("new")]);
+        using var client = new ClaudeAccountClient(new HttpClient(server), () => tokens.Count > 0 ? tokens.Dequeue() : Token("new"),
+                                                   OwnTokenStore.None, SignOutFlag.InMemory(), () => _now);
         server.OnUsage = authorization => server.Usage = authorization == "Bearer new" ? (HttpStatusCode.OK, Usage) : server.Usage;
 
         var payload = await client.FetchAsync(TestContext.Current.CancellationToken);
@@ -107,7 +108,7 @@ public sealed class AccountClientTests
     [Fact]
     public async Task WithoutATokenNothingIsSentAndNobodyIsSignedIn()
     {
-        var server = new StubAnthropic();
+        var server = new StubbedAnthropic();
         using var client = Client(server, null);
 
         var payload = await client.FetchAsync(TestContext.Current.CancellationToken);
@@ -117,36 +118,39 @@ public sealed class AccountClientTests
         Assert.Equal(0, server.UsageRequests);
     }
 
-    private ClaudeAccountClient Client(StubAnthropic server, OAuthToken? token) =>
-        new(new HttpClient(server), () => token, () => _now);
-
-    private static OAuthToken Token(string value) => new(value, null, null);
-
-    private sealed class StubAnthropic : HttpMessageHandler
+    /// <summary>Holding the refresh key repeats it: each repeat must not lift a backoff the server asked for.</summary>
+    [Fact]
+    public void ARefreshLiftsTheBackoffOncePerMinute()
     {
-        public (HttpStatusCode, string) Usage { get; set; } = (HttpStatusCode.InternalServerError, "");
-        public (HttpStatusCode, string) Profile { get; set; } = (HttpStatusCode.NotFound, "");
-        public Action<string?>? OnUsage { get; set; }
-        public int UsageRequests { get; private set; }
-        public string? LastAuthorization { get; private set; }
-        public string? LastBeta { get; private set; }
+        using var client = Client(new StubbedAnthropic(), null);
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            LastAuthorization = request.Headers.Authorization?.ToString();
-            LastBeta = request.Headers.TryGetValues("anthropic-beta", out var beta) ? beta.Single() : null;
-            (HttpStatusCode Status, string Body) answer;
-            if (request.RequestUri!.AbsolutePath.EndsWith("/usage", StringComparison.Ordinal))
-            {
-                UsageRequests++;
-                OnUsage?.Invoke(LastAuthorization);
-                answer = Usage;
-            }
-            else
-            {
-                answer = Profile;
-            }
-            return Task.FromResult(new HttpResponseMessage(answer.Status) { Content = new StringContent(answer.Body) });
-        }
+        var first = client.ResetBackoff();
+        _now += ClaudeAccountClient.ManualRetrySpacing - TimeSpan.FromSeconds(1);
+        var repeated = client.ResetBackoff();
+        _now += TimeSpan.FromSeconds(1);
+        var aMinuteLater = client.ResetBackoff();
+
+        Assert.True(first);
+        Assert.False(repeated);
+        Assert.True(aMinuteLater);
     }
+
+    [Fact]
+    public async Task On401ABorrowedTokenIsNeverRefreshed()
+    {
+        var server = new StubbedAnthropic { Usage = (HttpStatusCode.Unauthorized, "{}") };
+        using var client = Client(server, Token("a"));
+
+        var payload = await client.FetchAsync(TestContext.Current.CancellationToken);
+
+        Assert.Null(payload.Reading);
+        Assert.True(payload.IsSignedIn);
+        Assert.Empty(server.TokenRequests);
+        Assert.Equal(1, server.UsageRequests);
+    }
+
+    private ClaudeAccountClient Client(StubbedAnthropic server, OAuthCredentials? token) =>
+        new(new HttpClient(server), () => token, OwnTokenStore.None, SignOutFlag.InMemory(), () => _now);
+
+    private static OAuthCredentials Token(string value) => Tokens.Borrowed(value);
 }

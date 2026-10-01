@@ -25,6 +25,9 @@
 
   <ItemGroup>
     <Content Include="Assets\Claudio.ico" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Nunito, the rounded face standing in for Claudy's SF Pro Rounded (SIL Open Font License). -->
+    <Content Include="Assets\Fonts\Nunito.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Fonts\OFL.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
