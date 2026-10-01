@@ -15,11 +15,19 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
+    <ApplicationIcon>Assets\Claudio.ico</ApplicationIcon>
+    <!-- Program.cs owns Main: Velopack must run before anything else, at install and update. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\Claudio.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="Velopack" />
   </ItemGroup>
 
   <ItemGroup>

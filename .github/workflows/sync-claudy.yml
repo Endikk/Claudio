@@ -27,6 +27,8 @@ jobs:
       - name: Pull Design/ and Fixtures/
         shell: pwsh
         run: ./Scripts/sync-claudy.ps1 -Ref '${{ inputs.ref }}'
+      - name: Rebuild the icon
+        run: python3 Scripts/make-icon.py
       - name: Open the pull request
         uses: peter-evans/create-pull-request@v8
         with:

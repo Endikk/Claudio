@@ -28,6 +28,7 @@ public sealed partial class CardWindow : Window
             presenter.IsMinimizable = false;
         }
         AppWindow.IsShownInSwitchers = false;
+        AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Claudio.ico"));
 
         var scale = Content.XamlRoot?.RasterizationScale ?? 1.0;
         var size = new Windows.Graphics.SizeInt32((int)(width * scale), (int)(160 * scale));

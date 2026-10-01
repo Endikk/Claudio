@@ -45,7 +45,19 @@ file of the same role:
 | `ModelName.swift` | `Claudio.Core/Services/ModelName.cs` |
 | `Theme.swift`, `ClaudyTyping`, `ClaudyOverload`, `ClaudyWave` | `Claudio.Core/Design/` (from the shared data) |
 
-## Releases
+## Installing and updating
 
-A `vX.Y.Z` tag builds x64 and ARM64, attests each zip's provenance (`gh attestation verify`), and
-publishes the release with its SHA-256 sums. The winget and Scoop manifests follow each release.
+Claudio ships with [Velopack](https://velopack.io), the installer and updater most .NET desktop apps
+use today. `Setup.exe` installs into `%LocalAppData%\Claudio` for the current user, without admin
+rights, and puts a shortcut on the desktop and in the Start menu, which is what makes Claudio show
+up in Windows search. `Program.Main` hands over to Velopack first, so installing, updating and
+uninstalling (Settings ▸ Apps) all go through it.
+
+Installed copies look for a newer release on GitHub at launch, download it in the background and
+apply it when Claudio quits (`Updates.cs`). x64 and ARM64 are separate channels, `win-x64` and
+`win-arm64`, so each machine only ever receives its own build.
+
+Every push builds both installers in CI (*Claudio-Setup-win-x64* artifact). A `vX.Y.Z` tag builds
+them again, attests their provenance (`gh attestation verify`), and publishes the release with
+Velopack's update packages. The icon is Claudy's: `Scripts/make-icon.py` packs
+`claudy/Design/icon/*.png` into `Assets/Claudio.ico`.

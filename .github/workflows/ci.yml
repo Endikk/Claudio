@@ -34,9 +34,9 @@ jobs:
         run: dotnet test tests/Claudio.Core.Tests/Claudio.Core.Tests.csproj --configuration Release
 
   app:
-    name: App (${{ matrix.platform }})
+    name: App and installer (${{ matrix.platform }})
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -50,5 +50,15 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - name: Build
-        run: dotnet build src/Claudio.App/Claudio.App.csproj --configuration Release -p:Platform=${{ matrix.platform }} -r ${{ matrix.rid }}
+      - name: Publish
+        run: dotnet publish src/Claudio.App/Claudio.App.csproj --configuration Release -p:Platform=${{ matrix.platform }} -r ${{ matrix.rid }} -o publish
+      - name: Installer
+        run: |
+          dotnet tool install -g vpk --version 1.2.161
+          vpk pack --packId Claudio --packVersion 0.0.0-ci.${{ github.run_number }} --packDir publish --mainExe Claudio.exe --packTitle Claudio --packAuthors Endikk --icon src/Claudio.App/Assets/Claudio.ico --channel ${{ matrix.rid }} --shortcuts Desktop,StartMenuRoot --outputDir releases
+      - name: Keep the installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: Claudio-Setup-${{ matrix.rid }}
+          path: releases/*Setup.exe
+          if-no-files-found: error

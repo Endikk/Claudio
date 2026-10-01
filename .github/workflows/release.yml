@@ -1,9 +1,10 @@
-# A tag vX.Y.Z builds Claudio for x64 and ARM64, attests where each zip comes from, and publishes
-# the release. Run by hand, it builds and attests without publishing anything.
+# A tag vX.Y.Z builds Claudio for x64 and ARM64, packs each into an installer (Setup.exe: a
+# shortcut on the desktop and in the Start menu, installed for the user without admin rights,
+# updated in place), attests where every file comes from, and publishes the GitHub release that
+# installed copies update from.
 name: Release
 
 on:
-  workflow_dispatch:
   push:
     tags: ['v*']
 
@@ -12,58 +13,53 @@ permissions:
   id-token: write
   attestations: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  build:
-    name: Build (${{ matrix.rid }})
+  release:
     runs-on: windows-latest
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        include:
-          - rid: win-x64
-            platform: x64
-          - rid: win-arm64
-            platform: ARM64
+    timeout-minutes: 45
+    env:
+      VERSION: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - name: Version
-        id: version
+      - name: Velopack
+        run: dotnet tool install -g vpk --version 1.2.161
+      - name: Build and pack
         shell: pwsh
         run: |
-          $version = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}'.TrimStart('v') } else { '0.0.0-dev' }
-          "value=$version" >> $env:GITHUB_OUTPUT
-      - name: Publish
-        run: >
-          dotnet publish src/Claudio.App/Claudio.App.csproj --configuration Release
-          -p:Platform=${{ matrix.platform }} -r ${{ matrix.rid }}
-          -p:Version=${{ steps.version.outputs.value }} -o dist/Claudio
-      - name: Zip
-        shell: pwsh
-        run: Compress-Archive -Path dist/Claudio/* -DestinationPath "dist/Claudio-${{ steps.version.outputs.value }}-${{ matrix.rid }}.zip"
+          $version = $env:VERSION.TrimStart('v')
+          foreach ($target in @(@{ Platform = 'x64'; Rid = 'win-x64' }, @{ Platform = 'ARM64'; Rid = 'win-arm64' })) {
+            $publish = "publish/$($target.Rid)"
+            dotnet publish src/Claudio.App/Claudio.App.csproj --configuration Release `
+              -p:Platform=$($target.Platform) -r $($target.Rid) -p:Version=$version -o $publish
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            # The previous release lets Velopack build a small delta update.
+            vpk download github --repoUrl "https://github.com/${{ github.repository }}" --token "${{ github.token }}" --channel $($target.Rid) --outputDir releases
+            vpk pack --packId Claudio --packVersion $version --packDir $publish --mainExe Claudio.exe `
+              --packTitle Claudio --packAuthors Endikk --icon src/Claudio.App/Assets/Claudio.ico `
+              --channel $($target.Rid) --shortcuts Desktop,StartMenuRoot --outputDir releases
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Attest provenance
         uses: actions/attest-build-provenance@v4
         with:
-          subject-path: dist/*.zip
-      - uses: actions/upload-artifact@v7
-        with:
-          name: Claudio-${{ matrix.rid }}
-          path: dist/*.zip
-
-  publish:
-    if: github.ref_type == 'tag'
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          path: dist
-          merge-multiple: true
-      - name: Checksums
-        run: cd dist && sha256sum *.zip > SHA256SUMS.txt
+          subject-path: |
+            releases/*.exe
+            releases/*.nupkg
       - name: Publish the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" dist/* --repo "${{ github.repository }}" --title "Claudio ${{ github.ref_name }}" --generate-notes
+        shell: pwsh
+        run: |
+          $first = $true
+          foreach ($rid in 'win-x64', 'win-arm64') {
+            $merge = if ($first) { @() } else { @('--merge') }
+            vpk upload github --repoUrl "https://github.com/${{ github.repository }}" --token "${{ github.token }}" `
+              --channel $rid --outputDir releases --publish --releaseName "Claudio $env:VERSION" --tag $env:VERSION @merge
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $first = $false
+          }

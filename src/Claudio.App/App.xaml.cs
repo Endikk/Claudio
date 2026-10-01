@@ -13,5 +13,6 @@ public partial class App : Application
     {
         _card = new CardWindow();
         _card.Activate();
+        _ = Updates.CheckAsync();
     }
 }

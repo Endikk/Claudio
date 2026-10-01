@@ -26,7 +26,12 @@ own quotas, as claude.ai ▸ Usage reports them, and never an estimate.
 
 ## Install
 
-Not yet. Releases will come through:
+Not released yet. Once it is, download `Claudio-win-x64-Setup.exe` (or `win-arm64`) from the
+[releases](https://github.com/Endikk/Claudio/releases) and run it: Claudio installs for you alone,
+without admin rights, puts its icon on the desktop and in the Start menu (type "Claudio" in the
+search), and updates itself from then on.
+
+It will also come through winget:
 
 ```powershell
 winget install Endikk.Claudio
