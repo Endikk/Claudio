@@ -55,7 +55,7 @@ jobs:
       - name: Installer
         run: |
           dotnet tool install -g vpk --version 1.2.161
-          vpk pack --packId Claudio --packVersion 0.0.0-ci.${{ github.run_number }} --packDir publish --mainExe Claudio.exe --packTitle Claudio --packAuthors Endikk --icon src/Claudio.App/Assets/Claudio.ico --channel ${{ matrix.rid }} --shortcuts Desktop,StartMenuRoot --outputDir releases
+          vpk pack --packId Claudio --packVersion 0.1.0-ci.${{ github.run_number }} --packDir publish --mainExe Claudio.exe --packTitle Claudio --packAuthors Endikk --icon src/Claudio.App/Assets/Claudio.ico --channel ${{ matrix.rid }} --shortcuts Desktop,StartMenuRoot --outputDir releases
       - name: Keep the installer
         uses: actions/upload-artifact@v7
         with:
