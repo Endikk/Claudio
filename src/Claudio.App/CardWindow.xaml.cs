@@ -1,5 +1,6 @@
 using Claudio.Core.Design;
 using Claudio.Core.Presentation;
+using Claudio.Core.Services;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -34,7 +35,7 @@ public sealed partial class CardWindow : Window
         AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Claudio.ico"));
 
         var scale = Content.XamlRoot?.RasterizationScale ?? 1.0;
-        var size = new Windows.Graphics.SizeInt32((int)(width * scale), (int)(170 * scale));
+        var size = new Windows.Graphics.SizeInt32((int)(width * scale), (int)(190 * scale));
         var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
         AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(
             area.X + area.Width - size.Width - (int)(margin * scale),
@@ -46,8 +47,11 @@ public sealed partial class CardWindow : Window
     }
 
     /// <summary>Shows one reading: the lead quota, its colour band, its reset, and its origin.</summary>
-    public void Show(CardSummary card)
+    public void Show(CardSummary card, TokenTotals totals)
     {
+        Tokens.Text = $"Today {TokenTotals.Format(totals.Today, System.Globalization.CultureInfo.CurrentCulture)}"
+            + $" · 7 days {TokenTotals.Format(totals.Week, System.Globalization.CultureInfo.CurrentCulture)} tokens on this PC";
+        Tokens.Visibility = totals.Week > 0 ? Visibility.Visible : Visibility.Collapsed;
         Caption.Text = $"{card.Title} · {card.Window}".ToUpperInvariant();
         Percent.Text = card.Percent;
         Percent.Opacity = card.IsMeasured ? 0.95 : 0.45;

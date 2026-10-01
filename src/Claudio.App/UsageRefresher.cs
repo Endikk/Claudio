@@ -17,12 +17,17 @@ internal sealed class UsageRefresher : IDisposable
     private readonly ClaudeAccountClient _client;
     private readonly ClaudeHome _home = ClaudeHome.Current;
     private readonly DispatcherQueueTimer _timer;
-    private readonly Action<CardSummary> _show;
+    private readonly Action<CardSummary, TokenTotals> _show;
+    private readonly TranscriptScanner _scanner;
+    private TokenTotals _totals = TokenTotals.Empty;
     private bool _isRefreshing;
 
-    public UsageRefresher(DispatcherQueue queue, Action<CardSummary> show)
+    public UsageRefresher(DispatcherQueue queue, Action<CardSummary, TokenTotals> show)
     {
         _show = show;
+        // Windows' own folder, then every running WSL distribution's: a response found in two
+        // places counts once.
+        _scanner = new TranscriptScanner(() => [_home.ProjectsDirectory, .. WslSources.ProjectsDirectories()]);
         _client = new ClaudeAccountClient(new HttpClient(), () => ClaudeCodeCredentials.Load(_home), log: DiagnosticLog.Append);
         _timer = queue.CreateTimer();
         _timer.Tick += async (_, _) => await RefreshAsync();
@@ -42,9 +47,19 @@ internal sealed class UsageRefresher : IDisposable
                 _client.ResetBackoff();
             }
             var installed = _home.IsInstalled;
+            // The history is read alongside the account, off the UI thread: a first pass over a
+            // large one takes a moment, and who is signed in is known at once.
+            var history = Task.Run(() => _scanner.Scan());
             var payload = installed ? await _client.FetchAsync() : null;
-            var card = CardSummary.From(payload, installed, DateTimeOffset.UtcNow);
-            _show(card);
+            _show(CardSummary.From(payload, installed, DateTimeOffset.UtcNow), _totals);
+            try
+            {
+                _totals = TokenTotals.From(await history, DateTimeOffset.UtcNow, TimeZoneInfo.Local);
+            }
+            catch (IOException)
+            {
+            }
+            _show(CardSummary.From(payload, installed, DateTimeOffset.UtcNow), _totals);
             Schedule(payload?.IsSignedIn == true || !installed ? Interval : SignInInterval);
         }
         finally

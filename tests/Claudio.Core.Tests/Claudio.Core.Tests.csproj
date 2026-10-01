@@ -23,7 +23,7 @@
 
   <!-- The cases Claudy's own tests run, so both apps read Anthropic's answers the same way. -->
   <ItemGroup>
-    <None Include="$(ClaudyDataDir)Fixtures\**\*.json" LinkBase="Fixtures" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(ClaudyDataDir)Fixtures\**\*" LinkBase="Fixtures" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

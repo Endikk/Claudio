@@ -16,9 +16,9 @@ public partial class App : Application
         var card = new CardWindow();
         _card = card;
         _tray = new TrayController(card.DispatcherQueue, card.Toggle, () => _refresher!.RefreshAsync(userInitiated: true), Quit);
-        _refresher = new UsageRefresher(card.DispatcherQueue, summary =>
+        _refresher = new UsageRefresher(card.DispatcherQueue, (summary, totals) =>
         {
-            card.Show(summary);
+            card.Show(summary, totals);
             _tray.Show(summary, card.TintOf(summary));
         });
         card.Activate();

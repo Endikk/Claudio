@@ -19,6 +19,9 @@ All notable changes to this project are documented here. Dates are release dates
 - Claudio in the notification area, next to the clock: the mascot, typing while a session runs
   and in the gauge's colour, the session figure in its tooltip. A click shows or hides the card;
   a right click opens Refresh and Quit.
+- Tokens used today and over seven days on this PC, read from Claude Code's transcripts, in
+  Windows and in every running WSL distribution. Each response counts once, at its final size,
+  whatever folder holds it: checked against the transcript cases Claudy runs.
 - Claudy's icon, the pixel mascot at its desk, on the desktop, in the Start menu and the taskbar.
 - An installer: Claudio's icon on the desktop and in the Start menu, found by Windows search,
   installed without admin rights and updated in place. One Claudio runs at a time.

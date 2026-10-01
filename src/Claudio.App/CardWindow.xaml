@@ -15,6 +15,7 @@
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
     <Grid>
@@ -43,5 +44,7 @@
 
     <TextBlock Grid.Row="3" x:Name="Detail" Margin="0,2,0,0" Opacity="0.6" FontSize="11"
                TextWrapping="Wrap" Text="Reading your account…" />
+
+    <TextBlock Grid.Row="4" x:Name="Tokens" Margin="0,8,0,0" Opacity="0.45" FontSize="11" Visibility="Collapsed" />
   </Grid>
 </Window>

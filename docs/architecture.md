@@ -46,6 +46,7 @@ file of the same role:
 | `ClaudeHome.swift` | `Claudio.Core/Services/ClaudeHome.cs` |
 | `ClaudeCodeCredentials.swift` | `Claudio.Core/Services/ClaudeCodeCredentials.cs` (a file on Windows, not the keychain) |
 | `ClaudeAccountClient.swift` | `Claudio.Core/Services/ClaudeAccountClient.cs` |
+| `TranscriptScanner.swift` | `Claudio.Core/Services/TranscriptScanner.cs` (+ WSL sources in `Claudio.App/WslSources.cs`) |
 | `Theme.swift`, `ClaudyTyping`, `ClaudyOverload`, `ClaudyWave` | `Claudio.Core/Design/` (from the shared data) |
 
 ## Installing and updating
