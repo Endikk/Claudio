@@ -2,7 +2,6 @@ using Claudio.Core.Design;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Shapes;
 
 namespace Claudio.App;
 
@@ -101,7 +100,7 @@ public sealed partial class MascotView : Canvas
             {
                 continue;
             }
-            Children.Add(new Path
+            Children.Add(new Microsoft.UI.Xaml.Shapes.Path
             {
                 Data = group,
                 Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B)),
