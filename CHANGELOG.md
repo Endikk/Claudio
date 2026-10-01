@@ -2,7 +2,9 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
-## 1.0.0 (unreleased)
+## 1.0.0-beta.1 (1 October 2026)
+
+The first build to try on a real PC, ahead of 1.0.0.
 
 ### Added
 

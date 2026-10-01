@@ -1,4 +1,4 @@
-# A tag vX.Y.Z builds Claudio for x64 and ARM64, packs each into an installer (Setup.exe: a
+# A new version on main (Directory.Build.props) or a tag vX.Y.Z builds Claudio for x64 and ARM64, packs each into an installer (Setup.exe: a
 # shortcut on the desktop and in the Start menu, installed for the user without admin rights,
 # updated in place), attests where every file comes from, and publishes the GitHub release that
 # installed copies update from.
@@ -6,6 +6,8 @@ name: Release
 
 on:
   push:
+    branches: [main]
+    paths: ['Directory.Build.props']
     tags: ['v*']
 
 permissions:
@@ -21,16 +23,34 @@ jobs:
   release:
     runs-on: windows-latest
     timeout-minutes: 45
-    env:
-      VERSION: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            $tag = '${{ github.ref_name }}'
+          } else {
+            $tag = 'v' + ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version
+          }
+          # A version already released is not built again.
+          $released = git ls-remote --tags origin "refs/tags/$tag"
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "skip=$(if ($released -and '${{ github.ref_type }}' -ne 'tag') { 'true' } else { 'false' })" >> $env:GITHUB_OUTPUT
+          "VERSION=$tag" >> $env:GITHUB_ENV
+          Write-Host "Version $tag, already released: $([bool]$released)"
       - uses: actions/setup-dotnet@v6
+        if: steps.version.outputs.skip != 'true'
         with:
           global-json-file: global.json
       - name: Velopack
+        if: steps.version.outputs.skip != 'true'
         run: dotnet tool install -g vpk --version 1.2.161
       - name: Build and pack
+        if: steps.version.outputs.skip != 'true'
         shell: pwsh
         run: |
           $version = $env:VERSION.TrimStart('v')
@@ -47,12 +67,14 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - name: Attest provenance
+        if: steps.version.outputs.skip != 'true'
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             releases/*.exe
             releases/*.nupkg
       - name: Publish the release
+        if: steps.version.outputs.skip != 'true'
         shell: pwsh
         run: |
           # A tag with a suffix (v1.0.0-beta.1) is a pre-release: installed copies on the stable
@@ -62,7 +84,7 @@ jobs:
           foreach ($rid in 'win-x64', 'win-arm64') {
             $merge = if ($first) { @() } else { @('--merge') }
             vpk upload github --repoUrl "https://github.com/${{ github.repository }}" --token "${{ github.token }}" `
-              --channel $rid --outputDir releases --publish --releaseName "Claudio $env:VERSION" --tag $env:VERSION @pre @merge
+              --channel $rid --outputDir releases --publish --releaseName "Claudio $env:VERSION" --tag $env:VERSION --targetCommitish ${{ github.sha }} @pre @merge
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $first = $false
           }
