@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
-## Unreleased
+## 1.0.0-beta.2 (1 October 2026)
 
 Everything Claudy does, on Windows.
 
