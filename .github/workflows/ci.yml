@@ -27,7 +27,9 @@ jobs:
         with:
           global-json-file: global.json
       - name: Format
-        run: dotnet format tests/Claudio.Core.Tests/Claudio.Core.Tests.csproj --verify-no-changes
+        run: |
+          dotnet format src/Claudio.Core/Claudio.Core.csproj --verify-no-changes
+          dotnet format tests/Claudio.Core.Tests/Claudio.Core.Tests.csproj --verify-no-changes
       - name: Test
         run: dotnet test tests/Claudio.Core.Tests/Claudio.Core.Tests.csproj --configuration Release
 
