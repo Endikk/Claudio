@@ -43,6 +43,9 @@ file of the same role:
 | `ClaudeAccountClient.parseUsage` | `Claudio.Core/Services/UsageParser.cs` |
 | `AccountLoader.planLabel` | `Claudio.Core/Services/PlanLabel.cs` |
 | `ModelName.swift` | `Claudio.Core/Services/ModelName.cs` |
+| `ClaudeHome.swift` | `Claudio.Core/Services/ClaudeHome.cs` |
+| `ClaudeCodeCredentials.swift` | `Claudio.Core/Services/ClaudeCodeCredentials.cs` (a file on Windows, not the keychain) |
+| `ClaudeAccountClient.swift` | `Claudio.Core/Services/ClaudeAccountClient.cs` |
 | `Theme.swift`, `ClaudyTyping`, `ClaudyOverload`, `ClaudyWave` | `Claudio.Core/Design/` (from the shared data) |
 
 ## Installing and updating

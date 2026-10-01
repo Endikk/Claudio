@@ -6,6 +6,7 @@ namespace Claudio.App;
 public partial class App : Application
 {
     private CardWindow? _card;
+    private UsageRefresher? _refresher;
 
     public App() => InitializeComponent();
 
@@ -13,6 +14,8 @@ public partial class App : Application
     {
         _card = new CardWindow();
         _card.Activate();
+        _refresher = new UsageRefresher(_card.DispatcherQueue, _card.Show);
+        _ = _refresher.RefreshAsync();
         _ = Updates.CheckAsync();
     }
 }
