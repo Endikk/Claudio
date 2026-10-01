@@ -1,0 +1,48 @@
+# The logic and the shared fixtures run on Linux in seconds; the app itself builds on Windows,
+# for both processors it ships for.
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [develop, main]
+    paths-ignore: ['**.md', 'docs/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: Core and fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Format
+        run: dotnet format tests/Claudio.Core.Tests/Claudio.Core.Tests.csproj --verify-no-changes
+      - name: Test
+        run: dotnet test tests/Claudio.Core.Tests/Claudio.Core.Tests.csproj --configuration Release
+
+  app:
+    name: App (${{ matrix.platform }})
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x64, ARM64]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Build
+        run: dotnet build src/Claudio.App/Claudio.App.csproj --configuration Release -p:Platform=${{ matrix.platform }}

@@ -1,0 +1,43 @@
+# Once a week, and on demand: when Claudy has published a release since the last sync, pull its
+# Design/ and Fixtures/ and open a pull request. CI then tells whether Claudio still reads every
+# answer the way Claudy does.
+name: Sync with Claudy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Claudy tag or branch (empty: latest release)'
+        required: false
+  schedule:
+    - cron: '17 6 * * 1'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: develop
+      - name: Pull Design/ and Fixtures/
+        shell: pwsh
+        run: ./Scripts/sync-claudy.ps1 -Ref '${{ inputs.ref }}'
+      - name: Open the pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          base: develop
+          branch: sync/claudy
+          commit-message: 'chore: sync the design and fixtures from Claudy'
+          title: 'Sync the design and fixtures from Claudy'
+          body: |
+            Design/ and Fixtures/ pulled from Claudy at `${{ inputs.ref || 'its latest release' }}`.
+
+            A failing **Core and fixtures** check means Claudy now reads an answer differently:
+            port the matching change from Claudy before merging.
+          labels: sync
+          delete-branch: true

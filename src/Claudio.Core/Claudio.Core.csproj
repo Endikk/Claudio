@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Claudio.Core</RootNamespace>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!-- Claudy's look, read at run time from the shared data rather than copied into code. -->
+  <ItemGroup>
+    <EmbeddedResource Include="$(ClaudyDataDir)Design\claudy.tokens.json" LogicalName="Design/claudy.tokens.json" />
+    <EmbeddedResource Include="$(ClaudyDataDir)Design\mascot\palette.json" LogicalName="Design/mascot/palette.json" />
+    <EmbeddedResource Include="$(ClaudyDataDir)Design\mascot\typing.json" LogicalName="Design/mascot/typing.json" />
+    <EmbeddedResource Include="$(ClaudyDataDir)Design\mascot\overload.json" LogicalName="Design/mascot/overload.json" />
+    <EmbeddedResource Include="$(ClaudyDataDir)Design\mascot\wave.json" LogicalName="Design/mascot/wave.json" />
+  </ItemGroup>
+
+</Project>

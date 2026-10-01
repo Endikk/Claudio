@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Claudio.App/Claudio.App.csproj" />
+    <Project Path="src/Claudio.Core/Claudio.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Claudio.Core.Tests/Claudio.Core.Tests.csproj" />
+  </Folder>
+</Solution>

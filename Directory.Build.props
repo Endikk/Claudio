@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Authors>Endikk</Authors>
+    <Product>Claudio</Product>
+    <Copyright>Copyright (c) 2026 Endikk</Copyright>
+    <Version>0.1.0</Version>
+    <!-- The data Claudio shares with Claudy, pulled by Scripts/sync-claudy.ps1. -->
+    <ClaudyDataDir>$(MSBuildThisFileDirectory)claudy\</ClaudyDataDir>
+  </PropertyGroup>
+</Project>
