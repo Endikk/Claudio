@@ -14,6 +14,8 @@
     <!-- Unpackaged and self-contained: one folder, no installer, no Store. -->
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <!-- Builds Claudio.pri, which holds the compiled XAML: without it App.xaml cannot load at launch. -->
+    <EnableMsixTooling>true</EnableMsixTooling>
     <SelfContained>true</SelfContained>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>Assets\Claudio.ico</ApplicationIcon>

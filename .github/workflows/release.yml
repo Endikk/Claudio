@@ -59,6 +59,8 @@ jobs:
             dotnet publish src/Claudio.App/Claudio.App.csproj --configuration Release `
               -p:Platform=$($target.Platform) -r $($target.Rid) -p:Version=$version -o $publish
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            # Without its compiled XAML, Claudio closes at launch before showing anything (1.0.0-beta.1).
+            if (-not (Test-Path "$publish/Claudio.pri")) { throw "$publish/Claudio.pri is missing: App.xaml cannot load." }
             # The previous release lets Velopack build a small delta update.
             vpk download github --repoUrl "https://github.com/${{ github.repository }}" --token "${{ github.token }}" --channel $($target.Rid) --outputDir releases
             vpk pack --packId Claudio --packVersion $version --packDir $publish --mainExe Claudio.exe `
