@@ -40,11 +40,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [x64, ARM64]
+        include:
+          - platform: x64
+            rid: win-x64
+          - platform: ARM64
+            rid: win-arm64
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Build
-        run: dotnet build src/Claudio.App/Claudio.App.csproj --configuration Release -p:Platform=${{ matrix.platform }}
+        run: dotnet build src/Claudio.App/Claudio.App.csproj --configuration Release -p:Platform=${{ matrix.platform }} -r ${{ matrix.rid }}
