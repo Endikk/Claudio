@@ -4,64 +4,107 @@
 
 **Your real Claude quotas, on your Windows desktop.**
 
-[![CI](https://github.com/Endikk/Claudio/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Endikk/Claudio/actions/workflows/ci.yml)
+[![Downloads](https://img.shields.io/github/downloads/Endikk/Claudio/total?label=downloads&color=D97757&style=flat-square)](https://github.com/Endikk/Claudio/releases)
+[![Stars](https://img.shields.io/github/stars/Endikk/Claudio?color=D97757&style=flat-square)](https://github.com/Endikk/Claudio/stargazers)
+[![Release](https://img.shields.io/github/v/release/Endikk/Claudio?include_prereleases&color=D97757&style=flat-square)](https://github.com/Endikk/Claudio/releases)
 [![Windows](https://img.shields.io/badge/Windows-11-black?style=flat-square)](https://www.microsoft.com/windows)
 [![License](https://img.shields.io/badge/license-MIT-black?style=flat-square)](LICENSE)
 
+🇫🇷 [This README in French](README.fr.md)
+
+<p align="center"><img src="docs/claudio-typing.gif" width="132" alt="Claudio, the pixel mascot, typing at its laptop"></p>
+
+<p align="center"><img src="docs/claudio-card.png" width="352" alt="The Claudio card: 5h session, weekly quotas, daily totals, 7-day curve, split by model and project"></p>
+
 </div>
 
-> **In development.** There is no release to install yet.
+A floating Windows widget for your Claude usage, the sibling of [Claudy](https://github.com/Endikk/Claudy)
+on macOS. Borderless, always on top, draggable, compact or full. The gauges show your account's
+**real quotas** — the same figures as claude.ai ▸ Usage and `/usage` — while the token detail comes
+from Claude Code's local transcripts, in Windows and in WSL.
 
-Claudio is the Windows sibling of [Claudy](https://github.com/Endikk/Claudy): the same pixel
-mascot, the same look and the same rule, **real numbers or none**. The gauges show your account's
-own quotas, as claude.ai ▸ Usage reports them, and never an estimate.
-
-## What it will do
-
-- A floating card in the corner above the clock, and an icon in the notification area.
-- The 5-hour session, the weekly quotas, and the monthly spend cap of Enterprise plans.
-- The pace marker: ahead of the clock or behind it.
-- Claude Code's usage from Windows **and from WSL**, read on this machine.
-- Nothing leaves the machine but the requests to Anthropic's API.
+- **Real numbers, or none.** Percentages come from Anthropic's API alone. When it says nothing,
+  the gauges read "—" rather than an estimate.
+- **Ports tab.** Lists the TCP ports Claude Code left listening, orphaned sessions included, and
+  closes them on a click. Attribution reads the Claude markers a process inherits in its
+  environment, so nothing else on your PC is ever listed.
+- **Nothing leaves the PC.** No telemetry, no third-party server, no conversation read or sent.
+  The only network requests go to Anthropic's API.
 
 ## Install
-
-Not released yet. Once it is, download `Claudio-win-x64-Setup.exe` (or `win-arm64`) from the
-[releases](https://github.com/Endikk/Claudio/releases) and run it: Claudio installs for you alone,
-without admin rights, puts its icon on the desktop and in the Start menu (type "Claudio" in the
-search), and updates itself from then on.
-
-It will also come through winget:
-
-```powershell
-winget install Endikk.Claudio
-```
-
-or [Scoop](https://scoop.sh):
 
 ```powershell
 scoop bucket add claudio https://github.com/Endikk/scoop-claudio
 scoop install claudio
 ```
 
-## Build
+<details>
+<summary>Other routes</summary>
 
-Requires Windows 11, the [.NET 10 SDK](https://dotnet.microsoft.com/download) and Visual Studio
-with the *WinUI application development* workload.
+**Installer:** download `Claudio-win-x64-Setup.exe` (or `win-arm64`) from the
+[releases](https://github.com/Endikk/Claudio/releases) and run it. Claudio installs for you alone,
+without admin rights, puts its icon on the desktop and in the Start menu, and updates itself from
+then on.
+
+Claudio is **not code-signed** yet, so Windows SmartScreen may warn on the first launch: *More
+info* ▸ *Run anyway*. Prefer not to? Build it yourself below; the code is short and auditable.
+
+**From source (Windows 11, .NET 10 SDK):**
 
 ```powershell
-dotnet test tests/Claudio.Core.Tests        # the logic, also runs on Linux and macOS
-dotnet build src/Claudio.App -p:Platform=x64
+git clone https://github.com/Endikk/Claudio.git
+cd Claudio
+dotnet publish src/Claudio.App -c Release -p:Platform=x64 -r win-x64 -o publish
+.\publish\Claudio.exe
 ```
 
-See [docs/architecture.md](docs/architecture.md) for how the code is laid out and how it stays in
-step with Claudy.
+winget (`winget install Endikk.Claudio`) comes with 1.0.0.
+
+</details>
+
+## Use
+
+Claudio has no window of its own in the taskbar. It shows as a floating card above the clock, or
+in the notification area: the mascot and, beside it, the lead figure ("42%"), where a click opens
+a short card. Right-click the card to move it from one to the other.
+
+| Gesture | Effect |
+|---|---|
+| Drag the card | Move the widget |
+| Click the session or the minimal strip | Switch between full and minimal mode |
+| `usage` / `ports` | Switch between quotas and the ports Claude left open |
+| Right-click | Refresh · Mode · Placement (card, notification area) · Sign in · Always on top · Launch at sign-in · Quit |
+| Click the icon next to the clock | Show or hide the card, or open the short card |
+| Click the avatar | Account card |
+| Click "Details" | Split by model and top projects |
+| Ctrl+R or F5 | Refresh |
+| Ctrl+Q | Quit |
+
+Refreshes every 3 minutes, and immediately when the PC wakes.
+
+## Documentation
+
+- [How it works](docs/how-it-works.md) — data sources, quota invariants, status-line bridge, pace
+  marker, privacy.
+- [Development](docs/development.md) — building, testing, project structure, the window
+  constraints worth knowing before touching it.
+- [Architecture](docs/architecture.md) — how Claudio stays in step with Claudy, file for file.
 
 ## Branches
 
 | Branch | Role |
 |---|---|
-| `main` | Stable. What is released. |
-| `develop` | The moving one. Open pull requests against it. |
+| `main` | Stable. What is released and what Scoop installs. |
+| `develop` | The moving one. Every feature lands here first and lives here until it has been used for real; `main` only ever receives what has held up. |
+
+Open pull requests against `develop`.
+
+## Contributing
+
+A bug, an idea, a figure that does not match claude.ai? Open an
+[issue](https://github.com/Endikk/Claudio/issues) — a screenshot and
+`%LOCALAPPDATA%\Claudio\api.log` are welcome. PRs are open.
 
 MIT, maintained by [@Endikk](https://github.com/Endikk).
+
+<p align="center"><img src="docs/claudio-overload.gif" width="196" alt="Claudio at 100 %: the laptop explodes and the mascot is left ashen, with crossed-out eyes"></p>
