@@ -34,6 +34,7 @@ internal sealed partial class RootView : FloatingPanel
     private Display? _shown;
     private bool _profileShown;
     private bool _isTyping;
+    private string? _shape;
 
     public RootView(UsageViewModel model, UpdateChecker updates, PortsViewModel ports, Action quit)
     {
@@ -44,7 +45,6 @@ internal sealed partial class RootView : FloatingPanel
         _minimal = new MinimalView(model, updates);
         _full = new FullView(model, updates, ports);
         Title = "Claudio";
-        ReturnsHomeOnResize = true;
 
         // Any click on the card counts as opening Claudio: the wave has been seen.
         Card.AddHandler(UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler((_, _) => updates.AcknowledgeGreeting()), handledEventsToo: true);
@@ -122,6 +122,15 @@ internal sealed partial class RootView : FloatingPanel
                 _full.Update();
                 break;
         }
+        // A new shape (mode, tab, details, update line) sends the card back to its corner, as
+        // Claudy's does when its window resizes; a drag otherwise holds.
+        var shape = $"{display}|{_model.Tab}|{_model.IsDetailsExpanded}|{_updates.Available is not null}";
+        if (_shape is not null && shape != _shape)
+        {
+            ReturnHome();
+        }
+        _shape = shape;
+
         // Visible strain: past 95 %, and only in the modes that carry gauges.
         SetStrain(display is Display.Full or Display.Minimal ? _model.Snapshot.Strain(Theme.StrainThreshold) : 0);
         UpdateProfile(display);

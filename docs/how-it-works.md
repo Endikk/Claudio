@@ -160,8 +160,9 @@ holds a still frame of each.
 Claudio looks for a new release at launch, once a day, and on any refresh you ask for (once a
 minute at most); a beta follows the betas. A new version downloads in the background: a coral dot
 marks the card and the icon, a line above the footer offers to restart into it, and it is applied
-when Claudio quits anyway. While Claudio lives in the notification area, a bubble rises above the
-clock once per version.
+when Claudio quits anyway. A bubble pops up once per version, wherever Claudio lives: above the
+clock in the notification area, against the card when it floats (above it, or below it near the
+top of the screen), following it when it is dragged.
 
 ## Privacy
 

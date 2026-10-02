@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
+## Unreleased
+
+### Added
+
+- **The update bubble, whatever the placement.** A new version now pops up on the floating card
+  too, not only next to the clock: the waving mascot, the version, "What's new", Later or
+  Update, just above the card (below it near the top of the screen). It follows the card when
+  it is dragged and, once answered, does not come back for that version.
+
+### Fixed
+
+- **A dropped card stays where it was dropped.** The card went back to its corner whenever its
+  measured height moved, even by a few pixels after a refresh. It now goes back only when it
+  changes shape (full or compact, tab, details, update line), as Claudy's does.
+
 ## 1.0.0-beta.2 (1 October 2026)
 
 Everything Claudy does, on Windows.

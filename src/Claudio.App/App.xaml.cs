@@ -45,6 +45,8 @@ public partial class App : Application
         _flyout = flyout;
         _tray = new MenuBarController(ui, TrayClicked, model, Quit);
         _bubble = new UpdateBubblePanel(updates, CloseBubble);
+        // The bubble follows the card when it is dragged or changes size.
+        card.Placed += Announce;
 
         model.OnUserRefresh = updates.CheckNow;
         model.Changed += Render;
@@ -119,23 +121,22 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// The bubble rises from the notification area once per version, as Claudy's drops from its
-    /// menu bar item; on the floating card the update line and the waving mascot say it instead.
+    /// A new version pops up once, as Claudy's bubble drops from its menu bar item: above the clock
+    /// when Claudio lives in the notification area, against the card when it floats, so it is seen
+    /// whatever the placement. Answered, it does not come back for that version.
     /// </summary>
     private void Announce()
     {
-        if (_bubble is null || _updates is null || _model is null)
+        if (_bubble is null || _updates is null || _model is null || _card is null)
         {
             return;
         }
-        if (_updates.ShouldAnnounce && _updates.Available is not null && _model.Placement == Placement.NotificationArea)
-        {
-            _bubble.Present();
-        }
-        else
+        if (!_updates.ShouldAnnounce || _updates.Available is null)
         {
             _bubble.Dismiss();
+            return;
         }
+        _bubble.Present(_model.Placement == Placement.Widget ? _card.VisualBounds : null);
     }
 
     /// <summary>The bubble was seen and closed: it does not come back for this version.</summary>

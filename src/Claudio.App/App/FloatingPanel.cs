@@ -37,7 +37,6 @@ internal partial class FloatingPanel : Window
     private double _corner = Theme.Metric("cardCorner");
     private (Size Card, double Scale, double Corner) _shadowKey;
     private PointInt32? _anchor;
-    private Size _cardSize;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _displayWatch;
     private bool _isAdjusting;
 
@@ -118,6 +117,38 @@ internal partial class FloatingPanel : Window
     /// <summary>The card itself, without the shadow margin.</summary>
     protected Grid Card { get; }
 
+    /// <summary>Raised whenever the window settles somewhere new: a resize, a drag, a screen change.</summary>
+    public event Action? Placed;
+
+    /// <summary>The visible card on screen, in pixels, without the shadow margin; null while hidden.</summary>
+    public RectInt32? VisualBounds
+    {
+        get
+        {
+            if (!AppWindow.IsVisible)
+            {
+                return null;
+            }
+            var inset = (int)Math.Round(_inset * Scale);
+            var (position, size) = (AppWindow.Position, AppWindow.Size);
+            return new RectInt32(position.X + inset, position.Y + inset, size.Width - (2 * inset), size.Height - (2 * inset));
+        }
+    }
+
+    /// <summary>The visible card's height in pixels, without the shadow margin; 0 until laid out.</summary>
+    protected int VisualHeight
+    {
+        get
+        {
+            if (Card.ActualHeight <= 0)
+            {
+                return 0;
+            }
+            Card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            return (int)Math.Ceiling((Card.DesiredSize.Height - (2 * _inset)) * Scale);
+        }
+    }
+
     /// <summary>Raised when the system theme flips, so the views redraw their inks.</summary>
     public event Action? ThemeFlipped;
 
@@ -135,10 +166,17 @@ internal partial class FloatingPanel : Window
     protected bool IsDraggable { get; set; } = true;
 
     /// <summary>
-    /// The card goes back to its corner whenever it changes size (mode, details, onboarding),
-    /// wherever it had been dragged, as Claudy's does.
+    /// Sends the card back to its corner of the screen it is on, wherever it had been dragged.
+    /// Claudy does it when the card changes shape (mode, details, onboarding); a few pixels of
+    /// measuring noise are no reason, or a card just dropped would jump back.
     /// </summary>
-    protected bool ReturnsHomeOnResize { get; set; }
+    protected void ReturnHome()
+    {
+        if (_anchor is not null)
+        {
+            _anchor = HomeAnchor();
+        }
+    }
 
     protected UIElement? Face
     {
@@ -207,11 +245,6 @@ internal partial class FloatingPanel : Window
         var width = (int)Math.Ceiling(Card.DesiredSize.Width * scale);
         var height = (int)Math.Ceiling(Card.DesiredSize.Height * scale);
 
-        if (ReturnsHomeOnResize && _cardSize != default && _cardSize != cardSize)
-        {
-            anchor = HomeAnchor();
-        }
-        _cardSize = cardSize;
         var area = DisplayArea.GetFromPoint(anchor, DisplayAreaFallback.Nearest).WorkArea;
         var margin = (int)Math.Round(_margin * scale);
         var visualWidth = width - (2 * inset);
@@ -227,6 +260,7 @@ internal partial class FloatingPanel : Window
         DrawShadow(cardSize);
         Clip(cardSize);
         Reach(frame, area, inset, scale);
+        Placed?.Invoke();
     }
 
     /// <summary>

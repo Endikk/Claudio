@@ -12,6 +12,8 @@ namespace Claudio.App;
 internal sealed partial class UpdateBubblePanel : FloatingPanel
 {
     private readonly UpdateBubble _bubble;
+    private RectInt32? _card;
+    private PointInt32? _target;
 
     public UpdateBubblePanel(UpdateChecker updates, Action close)
     {
@@ -20,6 +22,8 @@ internal sealed partial class UpdateBubblePanel : FloatingPanel
         IsDraggable = false;
         Title = "Claudio";
         ThemeFlipped += Update;
+        // Its height is known once it is laid out: then it picks its side of the card.
+        Placed += Settle;
     }
 
     public void Update()
@@ -28,18 +32,25 @@ internal sealed partial class UpdateBubblePanel : FloatingPanel
         FitToCard();
     }
 
-    public void Present()
+    /// <summary>
+    /// Shows the bubble next to <paramref name="card"/>, the floating card's bounds on screen, or
+    /// above the clock when none is given; moves it there when it is already up.
+    /// </summary>
+    public void Present(RectInt32? card = null)
     {
-        if (AppWindow.IsVisible)
+        _card = card;
+        if (!AppWindow.IsVisible)
+        {
+            SetActivatable(false);
+            Update();
+            AppWindow.Show(activateWindow: false);
+            SetTopmost(true);
+        }
+        else
         {
             Update();
-            return;
         }
-        SetActivatable(false);
-        Update();
-        AppWindow.Show(activateWindow: false);
-        SetTopmost(true);
-        Anchor = Corner();
+        Settle();
     }
 
     public void Dismiss()
@@ -48,6 +59,39 @@ internal sealed partial class UpdateBubblePanel : FloatingPanel
         {
             AppWindow.Hide();
         }
+    }
+
+    /// <summary>
+    /// Anchors the bubble where it belongs. Once per target: the panel may clamp the anchor into
+    /// the screen, and asking again for the unclamped one would go round forever.
+    /// </summary>
+    private void Settle()
+    {
+        var target = Target();
+        if (_target != target)
+        {
+            _target = target;
+            Anchor = target;
+        }
+    }
+
+    /// <summary>
+    /// Where the bubble's bottom-right corner goes: a margin above the card, right-aligned with it,
+    /// or below it when the screen has no room above; above the clock without a card.
+    /// </summary>
+    private PointInt32 Target()
+    {
+        if (_card is not { } card)
+        {
+            return Corner();
+        }
+        var area = DisplayArea.GetFromPoint(new PointInt32(card.X, card.Y), DisplayAreaFallback.Nearest).WorkArea;
+        var margin = (int)Math.Round(Theme.Metric("screenMargin") * Scale);
+        var right = card.X + card.Width;
+        var above = card.Y - margin;
+        return above - VisualHeight >= area.Y + margin
+            ? new PointInt32(right, above)
+            : new PointInt32(right, card.Y + card.Height + margin + VisualHeight);
     }
 
     /// <summary>The corner of the work area next to the taskbar, where the notification area is.</summary>
