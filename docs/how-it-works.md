@@ -93,9 +93,6 @@ counted in the transcripts are still displayed, but for what they are: **this PC
 ("12.4 M tokens on this machine"), the 7-day history and the splits. They never mix with the
 account percentage.
 
-Unlike Claudy, Claudio has **no demo mode**: without Claude Code and without a sign-in, the card
-asks to sign in and shows nothing it did not measure.
-
 ### Enterprise: a monthly spend cap
 
 Enterprise plans are billed on usage: the API answers `five_hour: null` and `seven_day: null`, and
@@ -155,6 +152,17 @@ and waves while a new version is out, until Claudio is opened. With Windows' *An
 off (Settings ▸ Accessibility ▸ Visual effects), as with macOS's "Reduce motion" for Claudy, it
 holds a still frame of each.
 
+### The island
+
+Claudy can live round a MacBook's notch: two ears hugging it at rest, the mascot on the left and the
+session's figure on the right, which drop open on hover into the session's bar, its pace and reset,
+and the other quotas. No PC has a notch, so Claudio hangs the same island from the top centre of the
+main screen, round a gap of its own between the ears (`--simulate-notch 185x32` gives it a
+MacBook's). It opens after a pointer has rested on it for 0.15 s, so a pointer crossing it on its way
+to a tab or a title bar leaves it shut, and closes 0.3 s after the pointer leaves; the icon next to
+the clock opens and closes it too. It never takes the focus, and steps aside while a game, a video
+or a presentation runs full screen, where Claudy's sits in the black band the notch leaves.
+
 ### Updates
 
 Claudio looks for a new release at launch, once a day, and on any refresh you ask for (once a
@@ -162,7 +170,20 @@ minute at most); a beta follows the betas. A new version downloads in the backgr
 marks the card and the icon, a line above the footer offers to restart into it, and it is applied
 when Claudio quits anyway. A bubble pops up once per version, wherever Claudio lives: above the
 clock in the notification area, against the card when it floats (above it, or below it near the
-top of the screen), following it when it is dragged.
+top of the screen), following it when it is dragged, and under the island at the top of the screen.
+
+### Demo mode
+
+With no trace of Claude Code on the PC (no `.claude.json` and no `projects` folder, in Windows or in
+a running WSL distribution) and nobody signed in to Claudio, the card switches to
+`DemoUsageDataSource`, Claudy's sample set, and **says so** through a "demo" badge in the header.
+The set contains nothing identifying: the name comes from the Windows session and the projects carry
+neutral names. The switch is re-evaluated on every refresh, so installing Claude Code afterwards is
+enough. Unlike Claudy, which has no other way in, Claudio's own sign-in stays offered on the demo
+set, and an account signed in that way always wins over it.
+
+Any other failure (unreadable `projects` folder, missing permissions) does **not** trigger demo
+mode: the last valid reading stays on screen and an "error" badge appears, with the detail on hover.
 
 ## Privacy
 

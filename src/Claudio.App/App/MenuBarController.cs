@@ -25,7 +25,7 @@ internal sealed partial class MenuBarController : IDisposable
     private readonly Mascot _mascot = Mascot.Shared;
     private readonly DesignTokens _tokens = DesignTokens.Shared;
     private readonly UsageViewModel _model;
-    private readonly Action _quit;
+    private readonly ClaudyMenu _menu;
     private (Rgba Tint, bool Dot, int Size) _style;
     private Pose _pose = Pose.Still;
     private DateTimeOffset _since = DateTimeOffset.UtcNow;
@@ -47,7 +47,7 @@ internal sealed partial class MenuBarController : IDisposable
     {
         _ui = ui;
         _model = model;
-        _quit = quit;
+        _menu = new ClaudyMenu(model, quit);
         _style = (_tokens.Color("color.accent.coral"), false, IconSize());
         _animation = ui.CreateTimer();
         _animation.IsRepeating = true;
@@ -98,7 +98,7 @@ internal sealed partial class MenuBarController : IDisposable
         var overloaded = snapshot.IsOverloaded;
         // The placeholder before the first reading is not one: remembering it would turn the first
         // real reading of a full quota into an explosion at launch instead of the dead state.
-        var isReading = hasLoaded && new[] { snapshot.Session, snapshot.Weekly, snapshot.Scoped, lead }.Any(window => window.IsMeasured);
+        var isReading = hasLoaded && (snapshot.IsDemo || new[] { snapshot.Session, snapshot.Weekly, snapshot.Scoped, lead }.Any(window => window.IsMeasured));
         Pose pose;
         if (overloaded)
         {
@@ -139,7 +139,7 @@ internal sealed partial class MenuBarController : IDisposable
         Draw();
         ShowFigure(lead, tooltip);
 
-        var menuKey = $"{_model.Placement}|{_model.IsSignedIn}|{_model.HasLoaded}|{_model.IsSigningIn}";
+        var menuKey = $"{_model.Placement}|{_model.HasNotchedScreen}|{_model.IsSignedIn}|{_model.HasLoaded}|{_model.IsSigningIn}";
         if (menuKey != _menuKey)
         {
             _menuKey = menuKey;
@@ -195,7 +195,7 @@ internal sealed partial class MenuBarController : IDisposable
     /// </summary>
     private void ShowFigure(UsageWindow lead, string tooltip)
     {
-        var wanted = _model.Placement == Placement.NotificationArea && _model.IsSignedIn;
+        var wanted = _model.Placement.Effective(_model.HasNotchedScreen) == Placement.NotificationArea && (_model.IsSignedIn || _model.Snapshot.IsDemo);
         if (!wanted)
         {
             if (_figure.IsCreated)
@@ -246,28 +246,21 @@ internal sealed partial class MenuBarController : IDisposable
         return frame with { Rows = rows };
     }
 
-    /// <summary>Claudy's short menu: refresh, the other placement, the account, quit.</summary>
+    /// <summary>Claudy's short menu, <see cref="ClaudyMenu"/>: refresh, the other placements, the account, quit.</summary>
     private PopupMenu Menu()
     {
         var menu = new PopupMenu();
-        menu.Items.Add(new PopupMenuItem("Refresh", (_, _) => _ui.TryEnqueue(() => _ = _model.RefreshAsync(userInitiated: true))));
-        foreach (var placement in _model.Placement.Offered())
+        foreach (var entry in _menu.Entries())
         {
-            menu.Items.Add(new PopupMenuItem(placement.MenuTitle(), (_, _) => _ui.TryEnqueue(() => _model.Place(placement))));
+            if (entry.Title is null)
+            {
+                menu.Items.Add(new PopupMenuSeparator());
+                continue;
+            }
+            // The tray lives on its own thread: every action is handed back to the UI thread.
+            var action = entry.Action;
+            menu.Items.Add(new PopupMenuItem(entry.Title, (_, _) => _ui.TryEnqueue(() => action?.Invoke())) { Enabled = action is not null });
         }
-        if (_model.IsSignedIn)
-        {
-            menu.Items.Add(new PopupMenuSeparator());
-            menu.Items.Add(new PopupMenuItem("Sign out of Claude", (_, _) => _ui.TryEnqueue(_model.SignOut)));
-        }
-        else if (_model.HasLoaded)
-        {
-            menu.Items.Add(new PopupMenuSeparator());
-            // Disabled while a sign-in is already under way.
-            menu.Items.Add(new PopupMenuItem("Sign in to Claude…", (_, _) => _ui.TryEnqueue(_model.StartSignIn)) { Enabled = !_model.IsSigningIn });
-        }
-        menu.Items.Add(new PopupMenuSeparator());
-        menu.Items.Add(new PopupMenuItem("Quit Claudio", (_, _) => _ui.TryEnqueue(() => _quit())));
         return menu;
     }
 

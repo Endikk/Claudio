@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Claudio.Core.Design;
 using Claudio.Core.Services;
@@ -69,7 +68,7 @@ internal partial class FloatingPanel : Window
         }
         AppWindow.IsShownInSwitchers = false;
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Claudio.ico"));
-        RemoveWindowFrame();
+        PanelChrome.RemoveFrame(AppWindow);
 
         _root.ActualThemeChanged += (_, _) => ThemeChanged();
         // A screen unplugged or a taskbar moved: once the system has settled, the card is put
@@ -132,6 +131,20 @@ internal partial class FloatingPanel : Window
             var inset = (int)Math.Round(_inset * Scale);
             var (position, size) = (AppWindow.Position, AppWindow.Size);
             return new RectInt32(position.X + inset, position.Y + inset, size.Width - (2 * inset), size.Height - (2 * inset));
+        }
+    }
+
+    /// <summary>The visible card's width in pixels, without the shadow margin; 0 until laid out.</summary>
+    protected int VisualWidth
+    {
+        get
+        {
+            if (Card.ActualWidth <= 0)
+            {
+                return 0;
+            }
+            Card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            return (int)Math.Ceiling((Card.DesiredSize.Width - (2 * _inset)) * Scale);
         }
     }
 
@@ -275,40 +288,17 @@ internal partial class FloatingPanel : Window
         var top = Math.Max(inset - Px(6), area.Y - frame.Y);
         var right = Math.Min(frame.Width - inset + Px(10), area.X + area.Width - frame.X);
         var bottom = Math.Min(frame.Height - inset + Px(16), area.Y + area.Height - frame.Y);
-        var region = CreateRectRgn(left, top, right, bottom);
-        // The system owns the region from here on.
-        _ = SetWindowRgn(Win32Interop.GetWindowFromWindowId(AppWindow.Id), region, 1);
+        PanelChrome.SetReach(AppWindow, left, top, right, bottom);
     }
 
-    /// <summary>
-    /// Above every other window, or among them. Set on the window itself: the presenter's flag
-    /// lost track of it once the extended style had been rewritten.
-    /// </summary>
-    protected void SetTopmost(bool topmost)
-    {
-        const int Topmost = 0x00000008; // WS_EX_TOPMOST
-        var handle = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
-        if (((GetWindowLongW(handle, -20) & Topmost) != 0) != topmost)
-        {
-            _ = SetWindowPos(handle, topmost ? -1 : -2, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); // NOSIZE NOMOVE NOACTIVATE
-        }
-    }
+    /// <summary>Above every other window, or among them.</summary>
+    protected void SetTopmost(bool topmost) => PanelChrome.SetTopmost(AppWindow, topmost);
 
     /// <summary>
     /// A window that never takes the focus, as Claudy's non-activating panel: a click on the card
     /// leaves the keyboard where it was. Typing (the sign-in code) needs it back.
     /// </summary>
-    protected void SetActivatable(bool activatable)
-    {
-        const int NoActivate = 0x08000000; // WS_EX_NOACTIVATE
-        var handle = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
-        var style = GetWindowLongW(handle, -20);
-        var wanted = activatable ? style & ~NoActivate : style | NoActivate;
-        if (wanted != style)
-        {
-            _ = SetWindowLongW(handle, -20, wanted);
-        }
-    }
+    protected void SetActivatable(bool activatable) => PanelChrome.SetActivatable(AppWindow, activatable);
 
     private void DrawShadow(Size card)
     {
@@ -458,58 +448,5 @@ internal partial class FloatingPanel : Window
 
     protected bool IsAdjusting => _isAdjusting;
 
-    private static PointInt32 Cursor()
-    {
-        GetCursorPos(out var point);
-        return new PointInt32(point.X, point.Y);
-    }
-
-    /// <summary>
-    /// Windows 11 draws its own corners and a one-pixel border round any window, a frame around the
-    /// glass: both go, the card draws its own edge.
-    /// </summary>
-    private void RemoveWindowFrame()
-    {
-        var handle = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
-        // The presenter leaves a thin dialog frame on a window without title bar: a white line round the glass.
-        const int Frame = 0x00800000 | 0x00400000 | 0x00040000;   // WS_BORDER | WS_DLGFRAME | WS_THICKFRAME
-        const int EdgeStyles = 0x00000100 | 0x00000001;           // WS_EX_WINDOWEDGE | WS_EX_DLGMODALFRAME
-        _ = SetWindowLongW(handle, -16, GetWindowLongW(handle, -16) & ~Frame);
-        _ = SetWindowLongW(handle, -20, GetWindowLongW(handle, -20) & ~EdgeStyles);
-        _ = SetWindowPos(handle, 0, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020); // NOSIZE NOMOVE NOZORDER NOACTIVATE FRAMECHANGED
-        var noRounding = 1; // DWMWCP_DONOTROUND
-        _ = DwmSetWindowAttribute(handle, 33, ref noRounding, sizeof(int));
-        var noBorder = unchecked((int)0xFFFFFFFE); // DWMWA_COLOR_NONE
-        _ = DwmSetWindowAttribute(handle, 34, ref noBorder, sizeof(int));
-    }
-
-    [LibraryImport("gdi32.dll")]
-    private static partial nint CreateRectRgn(int left, int top, int right, int bottom);
-
-    [LibraryImport("user32.dll")]
-    private static partial int SetWindowRgn(nint window, nint region, int redraw);
-
-    [LibraryImport("user32.dll")]
-    private static partial int GetWindowLongW(nint window, int index);
-
-    [LibraryImport("user32.dll")]
-    private static partial int SetWindowLongW(nint window, int index, int value);
-
-    [LibraryImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool SetWindowPos(nint window, nint after, int x, int y, int width, int height, uint flags);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativePoint
-    {
-        public int X;
-        public int Y;
-    }
-
-    [LibraryImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool GetCursorPos(out NativePoint point);
-
-    [LibraryImport("dwmapi.dll")]
-    private static partial int DwmSetWindowAttribute(nint window, int attribute, ref int value, int size);
+    private static PointInt32 Cursor() => PanelChrome.Cursor();
 }

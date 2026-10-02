@@ -24,7 +24,8 @@ affichent les **vrais quotas** du compte — les mêmes chiffres que claude.ai �
 tandis que le détail des tokens vient des transcripts locaux de Claude Code, sous Windows et dans WSL.
 
 - **Des chiffres réels, ou aucun.** Les pourcentages viennent de la seule API d'Anthropic. Quand
-  elle ne dit rien, les jauges affichent « — » plutôt qu'une estimation.
+  elle ne dit rien, les jauges affichent « — » plutôt qu'une estimation. Sur un PC sans Claude Code
+  où personne n'est connecté, un jeu d'exemple marqué « demo » montre à quoi ressemble Claudio.
 - **Onglet Ports.** Liste les ports TCP laissés en écoute par Claude Code, sessions orphelines
   comprises, et les ferme d'un clic. L'attribution lit les marqueurs Claude hérités dans
   l'environnement du process : rien d'autre sur le PC n'est listé.
@@ -66,16 +67,19 @@ winget (`winget install Endikk.Claudio`) arrive avec la 1.0.0.
 ## Utiliser
 
 Claudio n'a pas de fenêtre dans la barre des tâches. Il s'affiche en carte flottante au-dessus de
-l'horloge, ou dans la zone de notification : la mascotte et, à côté, le chiffre principal (« 42% »),
-où un clic ouvre une carte courte. Un clic droit sur la carte le fait passer de l'un à l'autre.
+l'horloge ; dans la zone de notification, la mascotte et, à côté, le chiffre principal (« 42% »),
+où un clic ouvre une carte courte ; ou en îlot suspendu en haut de l'écran, la mascotte et le
+chiffre de part et d'autre, qui s'ouvre au survol comme celui de Claudy autour de l'encoche. Un
+clic droit sur l'un d'eux le déplace.
 
 | Geste | Effet |
 |---|---|
 | Glisser la carte | Déplacer le widget |
 | Clic sur la session ou sur la bande minimale | Passer du mode complet au mode minimal |
 | `usage` / `ports` | Basculer entre les quotas et les ports laissés ouverts par Claude |
-| Clic droit | Rafraîchir · Mode · Emplacement (carte, zone de notification) · Connexion · Toujours au-dessus · Lancer au démarrage · Quitter |
-| Clic sur l'icône près de l'horloge | Afficher ou masquer la carte, ou ouvrir la carte courte |
+| Clic droit | Rafraîchir · Mode · Emplacement (carte, zone de notification, haut de l'écran) · Connexion · Toujours au-dessus · Lancer au démarrage · Quitter |
+| Survol de l'îlot en haut de l'écran | Ouvrir la session, son rythme et sa remise à zéro, et les autres quotas |
+| Clic sur l'icône près de l'horloge | Afficher ou masquer la carte, ouvrir la carte courte, ou ouvrir l'îlot |
 | Clic sur l'avatar | Carte du compte |
 | Clic sur « Details » | Répartition par modèle et projets principaux |
 | Ctrl+R ou F5 | Rafraîchir |
@@ -88,7 +92,7 @@ Rafraîchit toutes les 3 minutes, et aussitôt au réveil du PC.
 La documentation détaillée est en anglais :
 
 - [How it works](docs/how-it-works.md) — sources des données, invariants des quotas, relais de la
-  status line, marqueur de rythme, confidentialité.
+  status line, marqueur de rythme, l'îlot, mode démo, confidentialité.
 - [Development](docs/development.md) — compilation, tests, structure du projet, les contraintes de
   la fenêtre à connaître avant d'y toucher.
 - [Architecture](docs/architecture.md) — comment Claudio suit Claudy, fichier pour fichier.

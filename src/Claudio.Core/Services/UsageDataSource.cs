@@ -3,10 +3,15 @@ using Claudio.Core.Models;
 namespace Claudio.Core.Services;
 
 /// <summary>
+/// No trace of Claude Code on this PC, and nobody signed in to Claudio: Claudy's
+/// <c>UsageDataError.claudeNotInstalled</c>, which hands over to the demo set.
+/// </summary>
+public sealed class ClaudeNotInstalledException() : Exception("Claude Code is not installed on this PC.");
+
+/// <summary>
 /// The real source, as Claudy's <c>LocalUsageDataSource</c>: the account's quotas for the gauges,
 /// Claude Code's local transcripts for the token detail. The account reading comes first; failing
-/// that, the counters Claude Code relayed through its status line. Claudio has no demo set: without
-/// Claude Code there is nothing to show, and the card says so.
+/// that, the counters Claude Code relayed through its status line.
 /// </summary>
 public sealed class LocalUsageDataSource
 {
@@ -45,15 +50,24 @@ public sealed class LocalUsageDataSource
         _zone = zone ?? TimeZoneInfo.Local;
     }
 
-    /// <summary>Claude Code is not on this PC: no account, no history, nothing to show.</summary>
+    /// <summary>Any trace of Claude Code on this PC, in Windows or in a WSL distribution.</summary>
     public bool IsInstalled => _isInstalled();
 
     public async Task<UsageSnapshot> FetchAsync(CancellationToken cancel = default)
     {
         // The history is read alongside the account rather than before it: a first pass over a
         // large one takes a moment, and who is signed in is known in milliseconds.
-        var scan = ReadHistory();
+        var installed = _isInstalled();
+        var scan = installed ? ReadHistory() : null;
         var payload = await _fetchAccount(cancel).ConfigureAwait(false);
+
+        // Only the absence of Claude Code justifies the demo set, as in Claudy. Claudio's own
+        // sign-in reads the account without Claude Code, and then the account wins.
+        if (!installed && !payload.IsSignedIn)
+        {
+            throw new ClaudeNotInstalledException();
+        }
+        scan ??= ReadHistory();
         var now = _now();
 
         // Signed out on purpose means no quota at all: the card would otherwise keep a percentage
@@ -109,6 +123,30 @@ public sealed class LocalUsageDataSource
             });
             _pass = pass;
             return pass;
+        }
+    }
+}
+
+/// <summary>
+/// The switch, as Claudy's <c>AdaptiveUsageDataSource</c>: real data when Claude Code is present
+/// or someone signed in, the demo set otherwise. The choice is remade on every refresh, so
+/// installing Claude Code, or signing in, is enough.
+/// </summary>
+public sealed class AdaptiveUsageDataSource(LocalUsageDataSource local, DemoUsageDataSource demo)
+{
+    /// <summary>
+    /// Only the absence of Claude Code justifies the demo set: any other failure must surface on
+    /// the card rather than show invented figures.
+    /// </summary>
+    public async Task<UsageSnapshot> FetchAsync(CancellationToken cancel = default)
+    {
+        try
+        {
+            return await local.FetchAsync(cancel).ConfigureAwait(false);
+        }
+        catch (ClaudeNotInstalledException)
+        {
+            return await demo.FetchAsync(cancel).ConfigureAwait(false);
         }
     }
 }

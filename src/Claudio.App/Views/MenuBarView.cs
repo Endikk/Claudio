@@ -101,7 +101,7 @@ internal sealed partial class MenuBarView : StackPanel
         }
 
         _body.Children.Clear();
-        if (_model.IsSignedIn)
+        if (_model.IsSignedIn || _model.IsDemo)
         {
             _lead.Update(lead, now);
             _weekly.Update(snapshot.Weekly, now);
@@ -117,8 +117,12 @@ internal sealed partial class MenuBarView : StackPanel
                 _body.Children.Add(Ui.Hairline());
                 _body.Children.Add(ModelSplit(snapshot.Models));
             }
-            _body.Children.Add(Ui.Hairline());
-            _body.Children.Add(AccountRow(snapshot.Account));
+            // The demo set has no account to sign out of.
+            if (_model.IsSignedIn)
+            {
+                _body.Children.Add(Ui.Hairline());
+                _body.Children.Add(AccountRow(snapshot.Account));
+            }
         }
         else if (_model.HasLoaded)
         {

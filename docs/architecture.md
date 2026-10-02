@@ -42,7 +42,7 @@ file of the same role:
 |---|---|
 | `Models/QuotaModels.swift` | `Claudio.Core/Models/QuotaModels.cs` |
 | `Models/UsageModels.swift` | `Claudio.Core/Models/UsageModels.cs` |
-| `Models/Placement.swift` | `Claudio.Core/Models/Placement.cs` (the card or the notification area; Windows has no notch) |
+| `Models/Placement.swift` | `Claudio.Core/Models/Placement.cs` (the card, the notification area, or the island at the top of the screen) |
 | `Models/PortModels.swift` | `Claudio.Core/Models/PortModels.cs` |
 | `ClaudeAccountClient.parseUsage` | `Claudio.Core/Services/UsageParser.cs` |
 | `AccountLoader.swift` | `Claudio.Core/Services/AccountLoader.cs`, its plan labels in `PlanLabel.cs` |
@@ -54,7 +54,9 @@ file of the same role:
 | `ClaudeAccountClient.swift` | `Claudio.Core/Services/ClaudeAccountClient.cs` |
 | `TranscriptScanner.swift`, `ProjectResolver.swift` | `Claudio.Core/Services/`, same names (+ WSL sources in `Claudio.App/Services/WslSources.cs`) |
 | `UsageAggregator.swift`, `UsageBridge.swift` | `Claudio.Core/Services/`, same names |
-| `UsageDataSource.swift` (`LocalUsageDataSource`) | `Claudio.Core/Services/UsageDataSource.cs`; no demo set, Claudio shows nothing it did not measure |
+| `UsageDataSource.swift`, `DemoUsageDataSource.swift` | `Claudio.Core/Services/`, same names; Claudio's own sign-in wins over the demo set |
+| `NotchGeometry.swift`, `NotchLayout.swift`, `NotchHover.swift` | `Claudio.Core/Services/`, same names; y counts downwards, and a PC's notch is Claudio's own, at the top centre of the main screen |
+| `NotchShape` (in `NotchView.swift`), `NotchActivity` (in `NotchActivityView.swift`) | `Claudio.Core/Design/NotchShape.cs`, `Claudio.Core/Presentation/NotchActivity.cs` |
 | `PortScanner.swift`, `PortReaper.swift`, `ProcessTable.swift`, `ProcessEnvironment.swift` | `Claudio.Core/Services/`, same names; what Claudy asks `lsof`, `ps` and `sysctl` comes from Win32 in `Claudio.App/Services/WindowsProcesses.cs` |
 | `UsageViewModel.swift` | `Claudio.App/ViewModels/UsageViewModel.cs`, its static formatting in `Claudio.Core/Presentation/UsageFormat.cs` |
 | `PortsViewModel.swift` | `Claudio.App/ViewModels/PortsViewModel.cs` (its texts in `Claudio.Core/Presentation/PortsText.cs`) |
@@ -63,6 +65,8 @@ file of the same role:
 | `Theme.swift`, `ClaudyTyping`, `ClaudyOverload`, `ClaudyWave`, `CardShadow` | `Claudio.Core/Design/` (from the shared data) |
 | `RootView.swift`, `FloatingPanel.swift` | `Claudio.App/Views/RootView.cs` on `App/FloatingPanel.cs` |
 | `MenuBarView.swift`, `MenuBarController.swift` | `Claudio.App/Views/MenuBarView.cs` in `App/MenuBarPopover.cs`, the icon in `App/MenuBarController.cs` |
+| `NotchController.swift`, `NotchPanel.swift`, `ClaudyMenu.swift` | `Claudio.App/App/`, same names; the panels' Win32 flags in `App/PanelChrome.cs` |
+| `NotchView.swift`, `NotchActivityView.swift`, `NotchFlight.swift` | `Claudio.App/Views/`, same names (`NotchFlight` and `IslandPercent` in `Components/`) |
 | `Views/*.swift`, `Views/Components/*.swift` (`CardShadow` as `OutlineShadow`) | `Claudio.App/Views/`, same names |
 
 The views are built in code rather than XAML, one class per SwiftUI view, so a Claudy view and its

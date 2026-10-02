@@ -15,7 +15,9 @@ dotnet build src/Claudio.App -p:Platform=x64
 Use `-p:Platform=ARM64` on an ARM PC. A build run this way is not installed, so it never looks for
 updates. A Debug build pretends a version is out with `--simulate-update 1.0.1`, as Claudy's
 `-ClaudySimulateUpdate`: the coral dot, the wave, the update line and the bubble show, and the
-bubble is never remembered.
+bubble is never remembered. `--simulate-notch none` runs Claudio as if no screen could hold the
+island, and `--simulate-notch 185x32` gives it a notch of that size, as Claudy's
+`-ClaudySimulateNotch`.
 
 ## Build what is released
 
@@ -51,19 +53,22 @@ src/Claudio.Core/      every rule, no Windows API (tested on any OS)
 ├── Models/            UsageSnapshot and its parts · QuotaModels · AccountModels · Placement · PortModels
 ├── Services/          ClaudeHome · TranscriptScanner · ProjectResolver · UsageAggregator ·
 │                      ClaudeAccountClient · ClaudeCodeCredentials · ClaudeCredentials · ClaudeOAuth ·
-│                      UsageBridge · UsageDataSource · AccountLoader · ModelName · PlanLabel ·
+│                      UsageBridge · UsageDataSource · DemoUsageDataSource · AccountLoader ·
+│                      ModelName · PlanLabel · NotchGeometry · NotchLayout · NotchHover ·
 │                      PortScanner · PortReaper · ProcessTable · ProcessEnvironment
-├── Presentation/      UsageFormat (figures, dates, pace) · PortsText
-└── Design/            Claudy's tokens, Theme, the mascot, CardShadow, the tray icon
+├── Presentation/      UsageFormat (figures, dates, pace) · NotchActivity · PortsText
+└── Design/            Claudy's tokens, Theme, the mascot, CardShadow, NotchShape, the tray icon
 src/Claudio.App/       the WinUI 3 app (Windows App SDK, unpackaged, self-contained)
 ├── App/               Program (Velopack first) · FloatingPanel (the glass window) · MenuBarController
-│                      (the icon next to the clock) · MenuBarPopover (the short card above it)
+│                      (the icon next to the clock) · MenuBarPopover (the short card above it) ·
+│                      NotchController · NotchPanel (the island) · ClaudyMenu · UpdateBubblePanel ·
+│                      PanelChrome (the windows' Win32 flags)
 ├── Services/          UpdateChecker (Velopack) · LaunchAtLogin · Preferences · WindowsProcesses ·
 │                      WslSources · ClaudeCredentialsStore (Credential Manager) · DiagnosticLog
 ├── ViewModels/        UsageViewModel · PortsViewModel
 ├── Theme/             Ui (type, inks, capsules) · Motion (springs) · TransparentBackdrop
 ├── Views/             RootView · FullView · MinimalView · OnboardingView · MenuBarView · PortsView ·
-│                      Components/
+│                      NotchView · NotchActivityView · Components/
 └── Assets/            the icon, and Nunito, the rounded face (SIL Open Font License)
 tests/                 xUnit, on Claudio.Core
 claudy/                Design/ and Fixtures/ pulled from Claudy, never edited here
@@ -102,5 +107,12 @@ The points worth knowing before changing it:
   Only the pasted sign-in code needs the keyboard, and only then does the card take it.
 - **Always on top is set on the window itself** (`SetWindowPos`), not through the presenter, which
   loses track of it once the extended style has been rewritten.
+- **Every window is made at launch.** A WinUI window first made after another one had been shown
+  appeared on screen without ever drawing its content: the island's is made with the others, and
+  only shown when it is wanted.
+- **The island draws itself frame by frame.** `NotchView` lays out the shape, the shadow (drawn once,
+  then stretched by a nine-grid), the content's fade and the mascot's and figure's flight from one
+  spring per frame; the window grows at once to the union of the frames and shrinks once the closing
+  spring has settled, so the moving shape is never cut.
 - **Fonts.** Claudy's face is SF Pro Rounded, which only Apple's systems may carry. Claudio ships
   Nunito, the closest rounded sans under an open licence, with SF's tight line height.

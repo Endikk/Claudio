@@ -19,6 +19,8 @@ public sealed partial class MascotView : Canvas
     private int _tick;
     private bool _isTyping;
     private bool _isWaving;
+    private bool _isHalved;
+    private readonly Dictionary<string, SpriteFrame> _halves = [];
     private bool? _isOverloaded;
     private DateTimeOffset? _overloadStart;
     private DateTimeOffset _waveStart = DateTimeOffset.UtcNow;
@@ -92,6 +94,24 @@ public sealed partial class MascotView : Canvas
         }
     }
 
+    /// <summary>
+    /// Drawn at half size, one cell per block of four as the icon next to the clock: the island's
+    /// ears hold the mascot at a third of its landed size, which below 160 % would fall between
+    /// device pixels and blur.
+    /// </summary>
+    public bool IsHalved
+    {
+        get => _isHalved;
+        set
+        {
+            if (_isHalved != value)
+            {
+                _isHalved = value;
+                Draw();
+            }
+        }
+    }
+
     private void Restart()
     {
         _timer.Stop();
@@ -136,6 +156,11 @@ public sealed partial class MascotView : Canvas
     private void Draw()
     {
         Children.Clear();
+        if (_isHalved)
+        {
+            DrawHalved();
+            return;
+        }
         var sprite = _mascot.Poses["resting"];
         if (sprite.Columns == 0 || ActualWidth <= 0 || ActualHeight <= 0)
         {
@@ -171,6 +196,51 @@ public sealed partial class MascotView : Canvas
             var frame = _isTyping && !still ? _mascot.TypingLoop[_tick % _mascot.TypingLoop.Count] : sprite;
             Paint(frame.Rows, 0, frame.Rows.Count, spriteX, spriteY, cell);
         }
+    }
+
+    /// <summary>The same states at half size: the explosion kept to the sprite's square, as the icon does.</summary>
+    private void DrawHalved()
+    {
+        var sprite = _mascot.Poses["resting"];
+        if (sprite.Columns == 0 || ActualWidth <= 0 || ActualHeight <= 0)
+        {
+            return;
+        }
+        var still = Motion.ReducesMotion;
+        SpriteFrame frame;
+        if (IsOverloaded)
+        {
+            TimeSpan? elapsed = still ? null
+                : _overloadStart is { } start ? DateTimeOffset.UtcNow - start
+                : _mascot.OverloadIntro + TimeSpan.FromMilliseconds(Environment.TickCount64);
+            var blast = _mascot.Overload[_mascot.OverloadFrameIndex(elapsed)];
+            var (column, row) = _mascot.SpriteOrigin;
+            var rows = blast.Rows.Skip(row).Take(sprite.Rows.Count)
+                            .Select(line => line.Substring(column, Math.Min(sprite.Columns, line.Length - column)))
+                            .ToList();
+            frame = blast with { Name = blast.Name + "-square", Rows = rows };
+        }
+        else if (_isWaving)
+        {
+            var wave = still ? _mascot.WaveStill : _mascot.Wave[_mascot.WaveFrameIndex(DateTimeOffset.UtcNow - _waveStart)];
+            // Only the rows the wave inks, from an even one: halving then pairs them as it pairs the sprite's.
+            var (first, count) = _mascot.WaveContentRows;
+            var from = first - (first % 2);
+            frame = wave with { Name = wave.Name + "-content", Rows = wave.Rows.Skip(from).Take(count + first - from).ToList() };
+        }
+        else
+        {
+            frame = _isTyping && !still ? _mascot.TypingLoop[_tick % _mascot.TypingLoop.Count] : sprite;
+        }
+        if (!_halves.TryGetValue(frame.Name, out var half))
+        {
+            half = TrayIconImage.Halve(frame);
+            _halves[frame.Name] = half;
+        }
+        var scale = XamlRoot?.RasterizationScale ?? 1.0;
+        double Snap(double value) => Math.Round(value * scale) / scale;
+        var cell = Math.Max(1, Math.Floor(Math.Min(ActualWidth / half.Columns, ActualHeight / half.Rows.Count) * scale)) / scale;
+        Paint(half.Rows, 0, half.Rows.Count, Snap((ActualWidth - (cell * half.Columns)) / 2), Snap((ActualHeight - (cell * half.Rows.Count)) / 2), cell);
     }
 
     private void Paint(IReadOnlyList<string> rows, int firstRow, int rowCount, double left, double top, double cell)

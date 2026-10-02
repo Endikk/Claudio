@@ -91,7 +91,7 @@ internal sealed partial class RootView : FloatingPanel
 
     private Display Wanted =>
         !_model.HasLoaded ? Display.Loading
-        : !_model.IsSignedIn ? Display.Onboarding
+        : !_model.IsSignedIn && !_model.IsDemo ? Display.Onboarding
         : _model.IsMinimal ? Display.Minimal
         : Display.Full;
 
@@ -204,9 +204,14 @@ internal sealed partial class RootView : FloatingPanel
         var menu = new MenuFlyout();
         menu.Items.Add(Item("Refresh", "\uE72C", () => _ = _model.RefreshAsync(userInitiated: true)));
         menu.Items.Add(Item(_model.IsMinimal ? "Full mode" : "Minimal mode", _model.IsMinimal ? "\uE740" : "\uE73F", _model.ToggleMode));
-        foreach (var placement in _model.Placement.Offered())
+        foreach (var placement in _model.Placement.Offered(_model.HasNotchedScreen))
         {
-            menu.Items.Add(Item(placement.MenuTitle(), placement == Placement.NotificationArea ? "\uE7F4" : "\uE737", () => _model.Place(placement)));
+            var item = Item(placement.MenuTitle(), placement == Placement.NotificationArea ? "\uE7F4" : "\uE737", () => _model.Place(placement));
+            if (placement == Placement.Notch)
+            {
+                item.Icon = IslandIcon();
+            }
+            menu.Items.Add(item);
         }
         menu.Items.Add(new MenuFlyoutSeparator());
         if (_model.IsSignedIn)
@@ -230,6 +235,18 @@ internal sealed partial class RootView : FloatingPanel
         menu.Items.Add(Item("Quit Claudio", null, _quit));
         return menu;
     }
+
+    /// <summary>
+    /// Claudy's <c>rectangle.topthird.inset.filled</c> has no Segoe glyph: a screen with the island
+    /// hanging from its top edge, drawn at the icons' 16 units.
+    /// </summary>
+    private static PathIcon IslandIcon() => new()
+    {
+        Data = (Microsoft.UI.Xaml.Media.Geometry)Microsoft.UI.Xaml.Markup.XamlBindingHelper.ConvertValue(typeof(Microsoft.UI.Xaml.Media.Geometry),
+            "F0 M3,2 H13 A2,2 0 0 1 15,4 V12 A2,2 0 0 1 13,14 H3 A2,2 0 0 1 1,12 V4 A2,2 0 0 1 3,2 Z "
+            + "M3.2,3.2 H12.8 A1,1 0 0 1 13.8,4.2 V11.8 A1,1 0 0 1 12.8,12.8 H3.2 A1,1 0 0 1 2.2,11.8 V4.2 A1,1 0 0 1 3.2,3.2 Z "
+            + "M5.5,3.2 H10.5 V4.6 A1.2,1.2 0 0 1 9.3,5.8 H6.7 A1.2,1.2 0 0 1 5.5,4.6 Z"),
+    };
 
     private static MenuFlyoutItem Item(string text, string? glyph, Action action)
     {

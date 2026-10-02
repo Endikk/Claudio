@@ -144,6 +144,9 @@ public sealed record UsageSnapshot
     /// </summary>
     public bool IsSignedIn { get; init; }
 
+    /// <summary>Claudy's sample set, shown while Claude Code is absent and nobody is signed in: never a reading.</summary>
+    public bool IsDemo => QuotaSource.Kind == QuotaSourceKind.Demo;
+
     private IEnumerable<UsageWindow> Gauges =>
         Spend is null ? [Session, Weekly, Scoped] : [Session, Weekly, Scoped, Spend];
 

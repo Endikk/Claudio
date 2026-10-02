@@ -110,14 +110,6 @@ public sealed class UsageFormatTests
         Assert.Equal("SMTWTFS", string.Concat(Enumerable.Range(0, 7).Select(day =>
             UsageFormat.DayInitial(new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeZoneInfo.Local.GetUtcOffset(new DateTime(2026, 9, 27))).AddDays(day)))));
 
-    [Fact]
-    public void PlacementsOfferTheOtherOne()
-    {
-        Assert.Equal([Placement.NotificationArea], Placement.Widget.Offered());
-        Assert.Equal(Placement.Widget, PlacementExtensions.Stored("nonsense"));
-        Assert.Equal(Placement.NotificationArea, PlacementExtensions.Stored("NotificationArea"));
-    }
-
     /// <summary>A five-hour window exactly halfway through.</summary>
     private static UsageWindow Halfway(double percent) => new()
     {

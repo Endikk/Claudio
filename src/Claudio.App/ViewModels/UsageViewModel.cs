@@ -31,7 +31,7 @@ internal sealed class UsageViewModel : IDisposable
     private readonly HttpClient _http = new();
     private readonly ClaudeAccountClient _client;
     private readonly ClaudeOAuth _oauth;
-    private readonly LocalUsageDataSource _source;
+    private readonly AdaptiveUsageDataSource _source;
     private readonly DispatcherQueueTimer _timer;
     private readonly DispatcherQueueTimer _wakeWatch;
     private DateTimeOffset _lastWakeTick = DateTimeOffset.UtcNow;
@@ -49,8 +49,10 @@ internal sealed class UsageViewModel : IDisposable
         // places counts once.
         var scanner = new TranscriptScanner(() => [.. ProjectsDirectories(), .. WslSources.ProjectsDirectories()]);
         var accounts = new AccountLoader(_home);
-        _source = new LocalUsageDataSource(scanner.Scan, _client.FetchAsync, () => _home.IsInstalled,
-                                           now => UsageBridge.Read(BridgeFile, now), accounts.Load);
+        // Claude Code in Windows or in a running WSL distribution: either way, real data.
+        var local = new LocalUsageDataSource(scanner.Scan, _client.FetchAsync, () => _home.IsInstalled || WslSources.ProjectsDirectories().Count > 0,
+                                             now => UsageBridge.Read(BridgeFile, now), accounts.Load);
+        _source = new AdaptiveUsageDataSource(local, new DemoUsageDataSource(accounts.Fallback));
 
         _timer = ui.CreateTimer();
         _timer.IsRepeating = true;
@@ -109,6 +111,15 @@ internal sealed class UsageViewModel : IDisposable
     public bool IsSignedIn => Snapshot.IsSignedIn;
 
     public bool IsClaudeInstalled => _home.IsInstalled;
+
+    /// <summary>Claudy's sample set is on screen: Claude Code is absent and nobody signed in.</summary>
+    public bool IsDemo => Snapshot.IsDemo;
+
+    /// <summary>
+    /// A screen can hold the island: always on a PC, unless <c>--simulate-notch none</c> says
+    /// otherwise. Kept up to date by the app; the menus offer the island only then.
+    /// </summary>
+    public bool HasNotchedScreen { get; set; } = true;
 
     public bool IsMinimal { get; private set; }
 
@@ -348,7 +359,7 @@ internal sealed class UsageViewModel : IDisposable
     /// <summary>Restarts the timer when the pace changes: signed in or not.</summary>
     private void Schedule()
     {
-        var interval = HasLoaded && !IsSignedIn ? SignInCheckInterval : RefreshInterval;
+        var interval = HasLoaded && !IsSignedIn && !IsDemo ? SignInCheckInterval : RefreshInterval;
         if (_timer.Interval != interval || !_timer.IsRunning)
         {
             _timer.Interval = interval;

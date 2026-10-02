@@ -12,5 +12,7 @@ answers are read; the two apps share data, never code.
 - One fixed reading, one fixture: behaviour changes land in Claudy's `Fixtures/` first.
 - `Claudio.Core` stays free of Windows APIs so its tests run on Linux:
   `dotnet test tests/Claudio.Core.Tests`.
-- Numbers come from Anthropic's API or are not shown. Never estimate a quota.
+- Numbers come from Anthropic's API or are not shown. Never estimate a quota. The one exception
+  is Claudy's demo set: only while Claude Code is absent and nobody is signed in, always labelled
+  "demo", never mixed with a reading.
 - Conventional Commits; pull requests go to `develop`; `main` is what is released.

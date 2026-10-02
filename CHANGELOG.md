@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
+## Unreleased
+
+### Added
+
+- **The island at the top of the screen.** Claudy's third place, its island round the notch, on
+  Windows: a dark band hangs from the top centre of the main screen, the mascot on one side and the
+  session's figure on the other. Rest the pointer on it and it drops open, as Claudy's does, into
+  the session's bar, its pace and reset, the weekly and per-model quotas and the update line, the
+  mascot and the figure flying into place; it closes once the pointer leaves. Right-click it for
+  Claudy's menu; the icon next to the clock opens it too. It steps aside while a game or a video
+  runs full screen. Pick it from any menu: "Show at the top of the screen".
+- **Claudy's demo mode.** On a PC without Claude Code where nobody signed in, the card shows
+  Claudy's sample set instead of an empty sign-in card, labelled "demo" in the header, with nothing
+  identifying in it. Signing in to Claudio, or installing Claude Code, brings the real figures back.
+
 ## 1.0.0-beta.3 (2 October 2026)
 
 ### Added

@@ -24,7 +24,8 @@ on macOS. Borderless, always on top, draggable, compact or full. The gauges show
 from Claude Code's local transcripts, in Windows and in WSL.
 
 - **Real numbers, or none.** Percentages come from Anthropic's API alone. When it says nothing,
-  the gauges read "—" rather than an estimate.
+  the gauges read "—" rather than an estimate. On a PC without Claude Code where nobody signed in,
+  a sample set labelled "demo" shows what Claudio looks like.
 - **Ports tab.** Lists the TCP ports Claude Code left listening, orphaned sessions included, and
   closes them on a click. Attribution reads the Claude markers a process inherits in its
   environment, so nothing else on your PC is ever listed.
@@ -64,17 +65,20 @@ winget (`winget install Endikk.Claudio`) comes with 1.0.0.
 
 ## Use
 
-Claudio has no window of its own in the taskbar. It shows as a floating card above the clock, or
-in the notification area: the mascot and, beside it, the lead figure ("42%"), where a click opens
-a short card. Right-click the card to move it from one to the other.
+Claudio has no window of its own in the taskbar. It shows as a floating card above the clock; in
+the notification area, the mascot and, beside it, the lead figure ("42%"), where a click opens a
+short card; or as an island hanging from the top of the screen, the mascot and the figure on
+either side, which opens on hover as Claudy's opens round the notch. Right-click any of them to
+move it.
 
 | Gesture | Effect |
 |---|---|
 | Drag the card | Move the widget |
 | Click the session or the minimal strip | Switch between full and minimal mode |
 | `usage` / `ports` | Switch between quotas and the ports Claude left open |
-| Right-click | Refresh · Mode · Placement (card, notification area) · Sign in · Always on top · Launch at sign-in · Quit |
-| Click the icon next to the clock | Show or hide the card, or open the short card |
+| Right-click | Refresh · Mode · Placement (card, notification area, top of the screen) · Sign in · Always on top · Launch at sign-in · Quit |
+| Hover the island at the top of the screen | Open the session, its pace and reset, and the other quotas |
+| Click the icon next to the clock | Show or hide the card, open the short card, or open the island |
 | Click the avatar | Account card |
 | Click "Details" | Split by model and top projects |
 | Ctrl+R or F5 | Refresh |
@@ -85,7 +89,7 @@ Refreshes every 3 minutes, and immediately when the PC wakes.
 ## Documentation
 
 - [How it works](docs/how-it-works.md) — data sources, quota invariants, status-line bridge, pace
-  marker, privacy.
+  marker, the island, demo mode, privacy.
 - [Development](docs/development.md) — building, testing, project structure, the window
   constraints worth knowing before touching it.
 - [Architecture](docs/architecture.md) — how Claudio stays in step with Claudy, file for file.

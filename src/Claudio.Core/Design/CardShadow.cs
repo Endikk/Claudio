@@ -33,6 +33,24 @@ public static class CardShadow
         Render(cardWidth, cardHeight, corner, scale, layers ?? Layers, Inset, hollow: true);
 
     /// <summary>
+    /// The open island's shadow, as Claudy's <c>OutlineShadow(outline: NotchShape)</c>: the island
+    /// hangs from the screen's top edge, so its shadow only has sides and a bottom. The image is
+    /// <see cref="Inset"/> wider than the island on each side and taller below it; its top row is
+    /// the screen's edge, and the island's own area is left clear.
+    /// </summary>
+    public static (byte[] Pixels, int Width, int Height) Island(double width, double height, double corner, double scale)
+    {
+        // A card reaching above the screen by its corner radius, its rounded top cut off with the
+        // margin above it: what is left meets the top edge square, as the island does.
+        var (pixels, imageWidth, imageHeight) = Render(width, height + corner, corner, scale, Layers, Inset, hollow: true);
+        var cut = (int)Math.Round((Inset + corner) * scale);
+        var rows = Math.Max(imageHeight - cut, 0);
+        var kept = new byte[imageWidth * rows * 4];
+        Array.Copy(pixels, imageWidth * cut * 4, kept, 0, kept.Length);
+        return (kept, imageWidth, rows);
+    }
+
+    /// <summary>
     /// Any SwiftUI <c>.shadow</c> of a rounded shape: the glow under a gauge, the avatar's, the
     /// sign-in button's. The shape sits <paramref name="margin"/> from every edge of the image;
     /// <paramref name="hollow"/> leaves the shape's own area clear, for a shadow under glass.

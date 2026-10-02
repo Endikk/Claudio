@@ -13,6 +13,7 @@ internal sealed partial class UpdateBubblePanel : FloatingPanel
 {
     private readonly UpdateBubble _bubble;
     private RectInt32? _card;
+    private bool _centred;
     private PointInt32? _target;
 
     public UpdateBubblePanel(UpdateChecker updates, Action close)
@@ -33,12 +34,14 @@ internal sealed partial class UpdateBubblePanel : FloatingPanel
     }
 
     /// <summary>
-    /// Shows the bubble next to <paramref name="card"/>, the floating card's bounds on screen, or
-    /// above the clock when none is given; moves it there when it is already up.
+    /// Shows the bubble next to <paramref name="card"/>, the floating card's or the island's bounds
+    /// on screen, or above the clock when none is given; moves it there when it is already up.
+    /// <paramref name="centred"/> puts it under the middle of what it points at, as under the island.
     /// </summary>
-    public void Present(RectInt32? card = null)
+    public void Present(RectInt32? card = null, bool centred = false)
     {
         _card = card;
+        _centred = centred;
         if (!AppWindow.IsVisible)
         {
             SetActivatable(false);
@@ -76,8 +79,8 @@ internal sealed partial class UpdateBubblePanel : FloatingPanel
     }
 
     /// <summary>
-    /// Where the bubble's bottom-right corner goes: a margin above the card, right-aligned with it,
-    /// or below it when the screen has no room above; above the clock without a card.
+    /// Where the bubble's bottom-right corner goes: a margin above the card, right-aligned with it
+    /// (or centred on it), or below it when the screen has no room above; above the clock without one.
     /// </summary>
     private PointInt32 Target()
     {
@@ -87,7 +90,7 @@ internal sealed partial class UpdateBubblePanel : FloatingPanel
         }
         var area = DisplayArea.GetFromPoint(new PointInt32(card.X, card.Y), DisplayAreaFallback.Nearest).WorkArea;
         var margin = (int)Math.Round(Theme.Metric("screenMargin") * Scale);
-        var right = card.X + card.Width;
+        var right = _centred ? card.X + ((card.Width + VisualWidth) / 2) : card.X + card.Width;
         var above = card.Y - margin;
         return above - VisualHeight >= area.Y + margin
             ? new PointInt32(right, above)
