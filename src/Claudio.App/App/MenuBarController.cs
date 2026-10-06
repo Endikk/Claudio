@@ -21,6 +21,7 @@ internal sealed partial class MenuBarController : IDisposable
     private readonly TrayIconWithContextMenu _figure = new("Claudio.Figure");
     private readonly DispatcherQueue _ui;
     private readonly DispatcherQueueTimer _animation;
+    private readonly DispatcherQueueTimer _retry;
     private readonly Dictionary<string, nint> _icons = [];
     private readonly Mascot _mascot = Mascot.Shared;
     private readonly DesignTokens _tokens = DesignTokens.Shared;
@@ -71,10 +72,43 @@ internal sealed partial class MenuBarController : IDisposable
         _tray.ToolTip = "Claudio";
         _tray.Icon = Icon(_mascot.Poses["resting"], "resting");
         _tray.ContextMenu = Menu();
-        _tray.Create();
         _figure.ToolTip = "Claudio";
         _figure.ContextMenu = Menu();
+
+        // The taskbar may not exist yet (Claudio launched at sign-in, before Explorer drew it) or
+        // at all (a server, a session without a shell). Creating an icon then throws on the
+        // library's own thread, which no handler can catch and which ends the process: so the icon
+        // waits for the taskbar, and Claudio shows its card or island meanwhile.
+        _retry = ui.CreateTimer();
+        _retry.Interval = TimeSpan.FromSeconds(2);
+        _retry.IsRepeating = true;
+        _retry.Tick += (_, _) => CreateWhenReady();
+        CreateWhenReady();
     }
+
+    /// <summary>Puts the icon next to the clock as soon as there is a taskbar to put it on.</summary>
+    private void CreateWhenReady()
+    {
+        if (_tray.IsCreated)
+        {
+            _retry.Stop();
+            return;
+        }
+        if (!TaskbarExists())
+        {
+            if (!_retry.IsRunning)
+            {
+                DiagnosticLog.Append("tray: no taskbar yet, the icon waits for it");
+                _retry.Start();
+            }
+            return;
+        }
+        _retry.Stop();
+        _tray.Create();
+        Draw();
+    }
+
+    private static bool TaskbarExists() => FindWindowW("Shell_TrayWnd", null) != 0;
 
     /// <summary>Follows a new reading: the tint of its band, the pose, the tooltips, the figure, the menu.</summary>
     public void Show(UsageSnapshot snapshot, bool isGreeting, bool hasUpdate, bool hasLoaded)
@@ -92,7 +126,10 @@ internal sealed partial class MenuBarController : IDisposable
         // Claudy's tooltip: the figure and when it resets, or just the name.
         var percent = lead.IsMeasured ? $"{UsageFormat.Percent(lead)}%" : UsageFormat.NoFigure;
         var tooltip = lead.IsActive(now) ? $"{lead.Title} {percent} · reset {UsageFormat.ResetTime(lead.ResetDate, now)}" : "Claudio";
-        _tray.UpdateToolTip(tooltip);
+        if (_tray.IsCreated)
+        {
+            _tray.UpdateToolTip(tooltip);
+        }
 
         var reduceMotion = Motion.ReducesMotion;
         var overloaded = snapshot.IsOverloaded;
@@ -160,6 +197,10 @@ internal sealed partial class MenuBarController : IDisposable
 
     private void Draw()
     {
+        if (!_tray.IsCreated)
+        {
+            return;
+        }
         var elapsed = DateTimeOffset.UtcNow - _since;
         switch (_pose)
         {
@@ -227,7 +268,7 @@ internal sealed partial class MenuBarController : IDisposable
                 DestroyIcon(previous);
             }
         }
-        if (!_figure.IsCreated)
+        if (!_figure.IsCreated && TaskbarExists())
         {
             _figure.Icon = _figureIcon;
             _figure.Create();
@@ -306,13 +347,9 @@ internal sealed partial class MenuBarController : IDisposable
         try
         {
             _tray.TryRemove();
-            _tray.Create();
-            Draw();
-            if (_figure.IsCreated)
-            {
-                _figure.TryRemove();
-                _figure.Create();
-            }
+            _figure.TryRemove();
+            // Explorer says its taskbar is back, but the window it is found by may take a moment.
+            CreateWhenReady();
         }
 #pragma warning disable CA1031 // A notification area that is not back yet is tried again at the next restart.
         catch (Exception error)
@@ -334,6 +371,7 @@ internal sealed partial class MenuBarController : IDisposable
     public void Dispose()
     {
         _animation.Stop();
+        _retry.Stop();
         _figure.Dispose();
         _tray.Dispose();
         Forget();
@@ -345,6 +383,9 @@ internal sealed partial class MenuBarController : IDisposable
 
     private const int SmallIconWidth = 49; // SM_CXSMICON
     private const uint IconVersion = 0x00030000;
+
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial nint FindWindowW(string className, string? windowName);
 
     [LibraryImport("user32.dll")]
     private static partial int GetSystemMetrics(int index);
