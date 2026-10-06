@@ -35,16 +35,19 @@ jobs:
 
   app:
     name: App and installer (${{ matrix.platform }})
-    runs-on: windows-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
+        # Each processor is built and started on a machine of its own kind.
         include:
           - platform: x64
             rid: win-x64
+            runner: windows-latest
           - platform: ARM64
             rid: win-arm64
+            runner: windows-11-arm
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -57,17 +60,15 @@ jobs:
         run: |
           if (-not (Test-Path publish/Claudio.pri)) { throw 'publish/Claudio.pri is missing: App.xaml cannot load.' }
       # The published folder is started for real, once per placement: what no unit test can see
-      # (a missing file, a window that never draws) fails here, not on a user's PC. The runner is
-      # x64, so the ARM64 build is only built.
+      # (a missing file, a window that never draws) fails here, not on a user's PC.
       - name: Starts and shows its window
-        if: matrix.platform == 'x64'
         shell: pwsh
         run: ./Scripts/smoke-test.ps1 -Folder publish -Report smoke
       - name: Keep the smoke test's logs
-        if: always() && matrix.platform == 'x64'
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: smoke-logs
+          name: smoke-logs-${{ matrix.rid }}
           path: smoke
           if-no-files-found: ignore
       - name: Installer
