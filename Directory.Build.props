@@ -8,7 +8,7 @@
     <Authors>Endikk</Authors>
     <Product>Claudio</Product>
     <Copyright>Copyright (c) 2026 Endikk</Copyright>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <!-- The data Claudio shares with Claudy, pulled by Scripts/sync-claudy.ps1. -->
     <ClaudyDataDir>$(MSBuildThisFileDirectory)claudy\</ClaudyDataDir>
   </PropertyGroup>
