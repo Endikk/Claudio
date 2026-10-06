@@ -6,7 +6,7 @@ All notable changes to this project are documented here. Dates are release dates
 
 ### Fixed
 
-- **Claudio no longer closes when it starts before the taskbar exists.** Launched at sign-in before
+- **Claudio no longer closes when it starts before the notification area is ready.** Launched at sign-in before
   Explorer had drawn the taskbar, or in a session without one, the icon next to the clock failed to
   be created on its library's own thread, which ended the process. The icon now waits for the
   taskbar and Claudio shows its card or island meanwhile. Found by running the ARM64 build, which CI

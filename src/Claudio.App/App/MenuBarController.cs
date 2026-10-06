@@ -75,8 +75,8 @@ internal sealed partial class MenuBarController : IDisposable
         _figure.ToolTip = "Claudio";
         _figure.ContextMenu = Menu();
 
-        // The taskbar may not exist yet (Claudio launched at sign-in, before Explorer drew it) or
-        // at all (a server, a session without a shell). Creating an icon then throws on the
+        // The notification area may not take icons yet (Claudio launched at sign-in, before Explorer
+        // drew it) or at all (a server, a session without a shell). Creating an icon then throws on the
         // library's own thread, which no handler can catch and which ends the process: so the icon
         // waits for the taskbar, and Claudio shows its card or island meanwhile.
         _retry = ui.CreateTimer();
@@ -98,7 +98,7 @@ internal sealed partial class MenuBarController : IDisposable
         {
             if (!_retry.IsRunning)
             {
-                DiagnosticLog.Append("tray: no taskbar yet, the icon waits for it");
+                DiagnosticLog.Append("tray: the notification area takes no icon yet, the icon waits for it");
                 _retry.Start();
             }
             return;
@@ -108,7 +108,7 @@ internal sealed partial class MenuBarController : IDisposable
         Draw();
     }
 
-    private static bool TaskbarExists() => FindWindowW("Shell_TrayWnd", null) != 0;
+    private static bool TaskbarExists() => NotificationAreaProbe.Accepts();
 
     /// <summary>Follows a new reading: the tint of its band, the pose, the tooltips, the figure, the menu.</summary>
     public void Show(UsageSnapshot snapshot, bool isGreeting, bool hasUpdate, bool hasLoaded)
@@ -383,9 +383,6 @@ internal sealed partial class MenuBarController : IDisposable
 
     private const int SmallIconWidth = 49; // SM_CXSMICON
     private const uint IconVersion = 0x00030000;
-
-    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
-    private static partial nint FindWindowW(string className, string? windowName);
 
     [LibraryImport("user32.dll")]
     private static partial int GetSystemMetrics(int index);
