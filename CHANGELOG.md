@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
+## 1.0.0 (2 October 2026)
+
+The first stable release: 1.0.0-beta.4, out of beta. Copies installed from a beta update to it, and
+from here on Claudio follows the stable releases only.
+
 ## 1.0.0-beta.4 (2 October 2026)
 
 ### Added

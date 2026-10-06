@@ -59,7 +59,7 @@ dotnet publish src/Claudio.App -c Release -p:Platform=x64 -r win-x64 -o publish
 .\publish\Claudio.exe
 ```
 
-winget (`winget install Endikk.Claudio`) comes with 1.0.0.
+winget is not available yet.
 
 </details>
 
