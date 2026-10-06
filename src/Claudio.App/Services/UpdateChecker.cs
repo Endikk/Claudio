@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Reflection;
 using Microsoft.UI.Dispatching;
 using Velopack;
@@ -181,13 +180,11 @@ internal sealed class UpdateChecker : IDisposable
         }
     }
 
-    public static void OpenReleasePage() =>
-        Process.Start(new ProcessStartInfo($"{Repository}/releases") { UseShellExecute = true })?.Dispose();
+    public static void OpenReleasePage() => Shell.Open(new Uri($"{Repository}/releases"));
 
     /// <summary>"What's new": the notes of the version on offer.</summary>
     public void OpenReleaseNotes() =>
-        Process.Start(new ProcessStartInfo(Available is { } version ? $"{Repository}/releases/tag/v{version}" : $"{Repository}/releases")
-        { UseShellExecute = true })?.Dispose();
+        Shell.Open(new Uri(Available is { } version ? $"{Repository}/releases/tag/v{version}" : $"{Repository}/releases"));
 
     private async Task CheckAsync()
     {
@@ -222,9 +219,12 @@ internal sealed class UpdateChecker : IDisposable
             Post(() => State = UpdateState.Ready);
         }
 #pragma warning disable CA1031 // An update check must never take Claudio down.
-        catch (Exception)
+        catch (Exception error)
 #pragma warning restore CA1031
         {
+            // Silent on the card (no network is no update), but written down: it is what tells a
+            // blocked GitHub from a broken release.
+            DiagnosticLog.Append($"update check failed: {error.GetType().Name}: {error.Message}");
             if (Available is not null)
             {
                 Post(() => State = UpdateState.Failed);

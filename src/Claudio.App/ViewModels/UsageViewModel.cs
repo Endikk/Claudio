@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Claudio.App.Views;
 using Claudio.Core.Models;
 using Claudio.Core.Services;
@@ -43,8 +42,13 @@ internal sealed class UsageViewModel : IDisposable
         var signedOut = new SignOutFlag(() => Preferences.IsSignedOut, value => Preferences.IsSignedOut = value);
         _client = new ClaudeAccountClient(_http, () => ClaudeCodeCredentials.Load(_home), ClaudeCredentialsStore.Store,
                                           signedOut, log: DiagnosticLog.Append);
-        _oauth = new ClaudeOAuth(_http, uri => Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true })?.Dispose(),
-                                 DiagnosticLog.Append);
+        _oauth = new ClaudeOAuth(_http, uri =>
+        {
+            if (!Shell.Open(uri))
+            {
+                throw new InvalidOperationException("Could not open your browser to sign in.");
+            }
+        }, DiagnosticLog.Append);
         // Windows' own folders, then every running WSL distribution's: a response found in two
         // places counts once.
         var scanner = new TranscriptScanner(() => [.. ProjectsDirectories(), .. WslSources.ProjectsDirectories()]);
@@ -56,7 +60,7 @@ internal sealed class UsageViewModel : IDisposable
 
         _timer = ui.CreateTimer();
         _timer.IsRepeating = true;
-        _timer.Tick += async (_, _) => await RefreshAsync();
+        _timer.Tick += async (_, _) => await Safely(RefreshAsync());
 
         // A PC waking from sleep finds its timers late: a tick far behind the clock means the
         // machine slept, and the card must read the account again at once.
@@ -70,7 +74,7 @@ internal sealed class UsageViewModel : IDisposable
             _lastWakeTick = now;
             if (slept)
             {
-                await RefreshAsync();
+                await Safely(RefreshAsync());
             }
         };
         _wakeWatch.Start();
@@ -263,7 +267,19 @@ internal sealed class UsageViewModel : IDisposable
 
     private void BeginBrowserSignIn()
     {
-        if (_oauth.Begin() == OAuthMode.Manual)
+        OAuthMode mode;
+        try
+        {
+            mode = _oauth.Begin();
+        }
+#pragma warning disable CA1031 // A browser that will not open ends the sign-in on the card, never the app.
+        catch (Exception error)
+#pragma warning restore CA1031
+        {
+            FailSignIn(error);
+            return;
+        }
+        if (mode == OAuthMode.Manual)
         {
             IsAwaitingManualCode = true;
             Notify();
@@ -336,11 +352,30 @@ internal sealed class UsageViewModel : IDisposable
     /// <summary>A refresh under way may have read the old session: wait for it, then read again.</summary>
     private async Task RefreshAfterSessionChangeAsync()
     {
-        while (IsRefreshing)
+        // Bounded: a refresh that never ends must not keep this one spinning for ever.
+        for (var waited = 0; IsRefreshing && waited < 600; waited++)
         {
             await Task.Delay(50);
         }
-        await RefreshAsync();
+        await Safely(RefreshAsync());
+    }
+
+    /// <summary>
+    /// A timer's handler is an async void: whatever escapes it ends the process. Anything that does
+    /// is written down instead, and the next tick tries again.
+    /// </summary>
+    private static async Task Safely(Task work)
+    {
+        try
+        {
+            await work;
+        }
+#pragma warning disable CA1031 // See above.
+        catch (Exception error)
+#pragma warning restore CA1031
+        {
+            DiagnosticLog.Append($"background refresh: {error}");
+        }
     }
 
     private void FailSignIn(Exception error)

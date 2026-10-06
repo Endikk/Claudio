@@ -61,6 +61,11 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             # Without its compiled XAML, Claudio closes at launch before showing anything (1.0.0-beta.1).
             if (-not (Test-Path "$publish/Claudio.pri")) { throw "$publish/Claudio.pri is missing: App.xaml cannot load." }
+            # A release that does not start is never published: the build is run for real first.
+            if ($target.Platform -eq 'x64') {
+              ./Scripts/smoke-test.ps1 -Folder $publish -Report smoke
+              if ($LASTEXITCODE -ne 0) { throw 'The smoke test failed: this build is not released.' }
+            }
             # The previous release lets Velopack build a small delta update.
             vpk download github --repoUrl "https://github.com/${{ github.repository }}" --token "${{ github.token }}" --channel $($target.Rid) --outputDir releases
             vpk pack --packId Claudio --packVersion $version --packDir $publish --mainExe Claudio.exe `

@@ -29,11 +29,37 @@ public partial class App : Application
     {
         InitializeComponent();
         // A failure that escapes a view is written down rather than lost: it is what a bug report needs.
-        UnhandledException += (_, args) => DiagnosticLog.Append($"unhandled: {args.Exception}");
-        TaskScheduler.UnobservedTaskException += (_, args) => DiagnosticLog.Append($"unobserved: {args.Exception}");
+        // A widget that vanishes is worse than one view that failed: the failure is written down and
+        // Claudio carries on, whichever thread it came from.
+        UnhandledException += (_, args) =>
+        {
+            DiagnosticLog.Append($"unhandled: {args.Exception}");
+            args.Handled = true;
+        };
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            DiagnosticLog.Append($"unobserved: {args.Exception}");
+            args.SetObserved();
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => DiagnosticLog.Append($"fatal: {args.ExceptionObject}");
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
+    {
+        try
+        {
+            Start();
+        }
+#pragma warning disable CA1031 // A start that failed must leave a trace, and must not leave a process with nothing on screen.
+        catch (Exception error)
+#pragma warning restore CA1031
+        {
+            DiagnosticLog.Append($"start failed: {error}");
+            Exit();
+        }
+    }
+
+    private void Start()
     {
         var ui = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         var model = new UsageViewModel(ui);

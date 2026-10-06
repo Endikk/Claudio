@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
+## Unreleased
+
+### Fixed
+
+- **A browser that will not open no longer freezes sign-in.** Without a default browser, "Sign in"
+  left Claudio waiting for ever and refusing to try again; it now says so on the card and lets you
+  retry. The same goes for "What's new" and "Download".
+- **A damaged settings file can no longer keep Claudio from starting or lose your choices.** A
+  number where text belongs, half a file, an empty one: Claudio reads the defaults, keeps the
+  damaged file as `settings.json.bad`, and saves a new one whole (written beside, then swapped in),
+  so a crash or a power cut halfway never leaves half of it.
+- **Failures are written down and survived.** A failure in a timer or a view is logged to `api.log`
+  and Claudio carries on; a start that fails leaves a trace and closes, instead of leaving a
+  process with nothing on screen. Update checks that fail are logged too.
+- **The weekly sync with Claudy no longer fails on a release without shared data.** Claudy's v1.5.7
+  has no `Design/` or `Fixtures/`; the sync now says so and changes nothing.
+
+### Added
+
+- **Every build is started for real before it ships.** CI and the release run the published Claudio
+  once per placement (card, notification area, island) and fail if it exits, shows the wrong
+  window, or logs a failure: a build like 1.0.0-beta.1, which closed at launch, can no longer be
+  released.
+
 ## 1.0.0 (2 October 2026)
 
 The first stable release: 1.0.0-beta.4, out of beta. Copies installed from a beta update to it, and
