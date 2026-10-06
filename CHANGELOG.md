@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
-## Unreleased
+## 1.0.1 (6 October 2026)
 
 ### Fixed
 
