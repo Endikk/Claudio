@@ -16,6 +16,14 @@ public sealed class DemoUsageDataSource
     private const long ScopedLimit = 7_000_000;
     private static readonly double[] Daily = [0.52, 0.94, 0.28, 0.71, 1.0, 0.61, 0.38];
 
+    /// <summary>
+    /// The demo opens partway through a session: this share of the quota is already used and the
+    /// same share of the window is already gone, so the gauge starts on its pace marker. A window
+    /// opening at launch would show 34 % used for 0 % elapsed, "ahead of pace" in red all cycle.
+    /// </summary>
+    private const double SessionShareAtStart = 0.34;
+    private static readonly TimeSpan SessionElapsedAtStart = SessionShareAtStart * UsageAggregator.SessionWindow;
+
     private readonly Func<Account> _account;
     private readonly Func<DateTimeOffset> _now;
     private readonly TimeZoneInfo _zone;
@@ -52,15 +60,16 @@ public sealed class DemoUsageDataSource
 
         // The session creeps up at each reading, then starts over: the mascot and the gauges move.
         _drift += 0.006 + (_random.NextDouble() * 0.014);
-        var start = _start ??= now;
+        var opening = now - SessionElapsedAtStart;
+        var start = _start ??= opening;
         if (_drift >= 0.62)
         {
             _drift = 0;
-            _start = now;
-            start = now;
+            _start = opening;
+            start = opening;
         }
 
-        var sessionPercent = Math.Min(0.34 + _drift, 0.99);
+        var sessionPercent = Math.Min(SessionShareAtStart + _drift, 0.99);
         var history = Daily.Select((factor, index) =>
         {
             var day = today.AddDays(index - (Daily.Length - 1));

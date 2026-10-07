@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
+## Unreleased
+
+### Fixed
+
+- **The demo's session no longer starts 35 points ahead of its clock.** It opened at the moment
+  of the reading, so its pace marker sat at zero under a third-full bar and the card read
+  "35 pts ahead of pace" in red, for good. It now opens partway through its window, with as much
+  of the window gone as of the quota used, so the gauge starts on its pace marker, as in Claudy.
+
 ## 1.0.2 (6 October 2026)
 
 ### Fixed

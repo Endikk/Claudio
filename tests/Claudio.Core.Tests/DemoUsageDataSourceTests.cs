@@ -1,4 +1,5 @@
 using Claudio.Core.Models;
+using Claudio.Core.Presentation;
 using Claudio.Core.Services;
 
 namespace Claudio.Core.Tests;
@@ -75,6 +76,21 @@ public sealed class DemoUsageDataSourceTests
         Assert.True(percents[1] > percents[0]);
         Assert.Contains(percents.Zip(percents.Skip(1)), pair => pair.Second < pair.First);
         Assert.All(percents, percent => Assert.InRange(percent, 0.34, 0.99));
+    }
+
+    /// <summary>
+    /// The demo must read like a session already under way: its gauge on the pace marker, not far
+    /// ahead of a window that opened the moment the app launched.
+    /// </summary>
+    [Fact]
+    public async Task TheFirstReadingIsOnPace()
+    {
+        var session = (await Demo().FetchAsync(TestContext.Current.CancellationToken)).Session;
+
+        Assert.True(session.IsActive(Now));
+        Assert.True(Math.Abs(session.Percent - session.Elapsed(Now)) < 0.04,
+                    $"{session.Percent} used for {session.Elapsed(Now)} of the window elapsed");
+        Assert.Equal("on pace", UsageFormat.PaceOf(session, Now)?.Text);
     }
 
     [Fact]
