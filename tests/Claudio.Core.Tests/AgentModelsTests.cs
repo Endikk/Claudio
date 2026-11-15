@@ -11,9 +11,17 @@ public sealed class AgentModelsTests
 
     private static RunningAgent Agent(AgentAction? last, AgentAction[]? recent = null, double lastActivity = 0, bool isFinished = false) => new()
     {
-        Id = "a1", SessionId = "s1", SessionPid = 4242, SessionName = "claire-bb", Title = "Benchmark",
-        StartedAt = Now.AddSeconds(-600), LastActivity = Now.AddSeconds(-lastActivity), IsFinished = isFinished,
-        ActionCount = recent?.Length ?? 0, Recent = recent ?? [], LastAction = last,
+        Id = "a1",
+        SessionId = "s1",
+        SessionPid = 4242,
+        SessionName = "claire-bb",
+        Title = "Benchmark",
+        StartedAt = Now.AddSeconds(-600),
+        LastActivity = Now.AddSeconds(-lastActivity),
+        IsFinished = isFinished,
+        ActionCount = recent?.Length ?? 0,
+        Recent = recent ?? [],
+        LastAction = last,
     };
 
     [Fact]

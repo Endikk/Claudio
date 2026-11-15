@@ -153,9 +153,16 @@ public sealed class AgentWorkTests
         }).ToList();
         return new RunningAgent
         {
-            Id = "a", SessionId = "s", SessionPid = 1, SessionName = "s", Title = "t",
-            StartedAt = Now.AddSeconds(-600), LastActivity = Now, ActionCount = actions.Count,
-            Recent = actions, LastAction = actions.LastOrDefault(),
+            Id = "a",
+            SessionId = "s",
+            SessionPid = 1,
+            SessionName = "s",
+            Title = "t",
+            StartedAt = Now.AddSeconds(-600),
+            LastActivity = Now,
+            ActionCount = actions.Count,
+            Recent = actions,
+            LastAction = actions.LastOrDefault(),
         };
     }
 
