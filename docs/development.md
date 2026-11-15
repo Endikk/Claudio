@@ -55,7 +55,9 @@ src/Claudio.Core/      every rule, no Windows API (tested on any OS)
 │                      ClaudeAccountClient · ClaudeCodeCredentials · ClaudeCredentials · ClaudeOAuth ·
 │                      UsageBridge · UsageDataSource · DemoUsageDataSource · AccountLoader ·
 │                      ModelName · PlanLabel · NotchGeometry · NotchLayout · NotchHover ·
-│                      PortScanner · PortReaper · ProcessTable · ProcessEnvironment
+│                      PortScanner · PortReaper · ProcessTable · ProcessEnvironment ·
+│                      AgentScanner · ProcessIdentity
+├── ViewModels/        AgentsViewModel (the sessions and their agents, driven by the App)
 ├── Presentation/      UsageFormat (figures, dates, pace) · NotchActivity · PortsText
 └── Design/            Claudy's tokens, Theme, the mascot, CardShadow, NotchShape, the tray icon
 src/Claudio.App/       the WinUI 3 app (Windows App SDK, unpackaged, self-contained)
@@ -64,7 +66,8 @@ src/Claudio.App/       the WinUI 3 app (Windows App SDK, unpackaged, self-contai
 │                      NotchController · NotchPanel (the island) · ClaudyMenu · UpdateBubblePanel ·
 │                      PanelChrome (the windows' Win32 flags)
 ├── Services/          UpdateChecker (Velopack) · LaunchAtLogin · Preferences · WindowsProcesses ·
-│                      WslSources · ClaudeCredentialsStore (Credential Manager) · DiagnosticLog
+│                      WindowsSessions · WslSources · ClaudeCredentialsStore (Credential Manager) ·
+│                      DiagnosticLog
 ├── ViewModels/        UsageViewModel · PortsViewModel
 ├── Theme/             Ui (type, inks, capsules) · Motion (springs) · TransparentBackdrop
 ├── Views/             RootView · FullView · MinimalView · OnboardingView · MenuBarView · PortsView ·

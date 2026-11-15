@@ -74,6 +74,47 @@ public sealed class ProcessTableTests
         Assert.Equal([501, 502], table.Children(500).Select(process => process.Pid));
     }
 
+    /// <summary>Every process below one, closest first, each generation by pid; nothing below the system's own.</summary>
+    [Fact]
+    public void DescendantsCoverTheWholeTree()
+    {
+        var table = Table(
+            new RunningProcess(4100, 900, Epoch, "npm.cmd exec chrome-devtools-mcp@latest"),
+            new RunningProcess(4103, 4100, Epoch.AddSeconds(1), "cmd.exe"),
+            new RunningProcess(4101, 4100, Epoch.AddSeconds(1), "chrome-devtools-mcp.exe"),
+            new RunningProcess(4102, 4101, Epoch.AddSeconds(2), "node.exe index.js"),
+            new RunningProcess(4200, 900, Epoch, "uvx.exe mcp-server-fetch"),
+            new RunningProcess(8, 4, Epoch, "smss.exe"));
+        Assert.Equal([4101, 4103, 4102], table.Descendants(4100).Select(process => process.Pid));
+        Assert.Equal([29636, 19784, 31000], Table(Tree).Descendants(28892).Select(process => process.Pid));
+        Assert.Empty(table.Descendants(4));
+        Assert.Empty(table.Descendants(0));
+        Assert.Empty(table.Descendants(42));
+    }
+
+    /// <summary>
+    /// A process naming as parent a pid that started after it belonged to a dead parent: it is
+    /// not a child, and nothing below it is a descendant.
+    /// </summary>
+    [Fact]
+    public void DescendantsLeaveOutTheChildrenOfADeadParent()
+    {
+        var table = Table(
+            new RunningProcess(500, 1, Epoch, @"C:\Users\x\.local\bin\claude.exe"),
+            new RunningProcess(501, 500, Epoch.AddSeconds(1), "node.exe server.js"),
+            new RunningProcess(502, 500, Epoch.AddSeconds(-30), "orphan.exe"),
+            new RunningProcess(503, 502, Epoch.AddSeconds(-20), "grandchild.exe"));
+        Assert.Equal([501], table.Descendants(500).Select(process => process.Pid));
+    }
+
+    /// <summary>A malformed table must not hang the walk: each process is visited once.</summary>
+    [Fact]
+    public void DescendantsOfALoopEnd()
+    {
+        var table = Table(new RunningProcess(10, 11, Epoch, "a.exe"), new RunningProcess(11, 10, Epoch, "b.exe"));
+        Assert.Equal([11], table.Descendants(10).Select(process => process.Pid));
+    }
+
     [Theory]
     [InlineData("/Users/x/.claude/local/claude")]
     [InlineData("/Users/x/.vscode/extensions/anthropic.claude-code-2.1.257/native-binary/claude --debug")]

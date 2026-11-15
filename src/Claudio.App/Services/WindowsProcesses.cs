@@ -200,6 +200,90 @@ internal static unsafe partial class WindowsProcesses
         }
     }
 
+    /// <summary>Whether a process runs under this pid, whoever it belongs to: refused access means it exists.</summary>
+    public static bool IsAlive(int pid)
+    {
+        if (pid <= LastSystemPid)
+        {
+            return false;
+        }
+        using var process = OpenProcess(Synchronize | ProcessQueryLimitedInformation, 0, (uint)pid);
+        if (process.IsInvalid)
+        {
+            return Marshal.GetLastPInvokeError() != ErrorInvalidParameter;
+        }
+        return WaitForSingleObject(process, 0) == WaitTimeout;
+    }
+
+    /// <summary>When the process started, from <c>GetProcessTimes</c>; null when it cannot be opened.</summary>
+    public static DateTimeOffset? StartDate(int pid)
+    {
+        if (pid <= LastSystemPid)
+        {
+            return null;
+        }
+        using var process = OpenProcess(ProcessQueryLimitedInformation, 0, (uint)pid);
+        return process.IsInvalid ? null : CreationTime(process);
+    }
+
+    /// <summary>The pid the process names as its parent, which may since have passed to another process.</summary>
+    public static int? Parent(int pid)
+    {
+        if (pid <= LastSystemPid)
+        {
+            return null;
+        }
+        using var process = OpenProcess(ProcessQueryLimitedInformation, 0, (uint)pid);
+        ProcessBasicInformation basic;
+        if (process.IsInvalid
+            || NtQueryInformationProcess(process, ProcessBasicInformationClass, &basic, (uint)sizeof(ProcessBasicInformation), out _) < 0)
+        {
+            return null;
+        }
+        return (int)basic.InheritedFromUniqueProcessId;
+    }
+
+    /// <summary>The full path of the program the process runs; null when it cannot be opened.</summary>
+    public static string? ExecutablePath(int pid)
+    {
+        if (pid <= LastSystemPid)
+        {
+            return null;
+        }
+        using var process = OpenProcess(ProcessQueryLimitedInformation, 0, (uint)pid);
+        return process.IsInvalid ? null : ImagePath(process);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> while the process is held open, once it is checked to be the
+    /// one that started at <paramref name="startedAt"/>, still running, and the current user's. While
+    /// the handle is held Windows cannot give the pid to another process, so whatever the action
+    /// does by pid reaches the process that was checked (Claudy's 5683bfb, made airtight).
+    /// </summary>
+    public static SignalResult Holding(int pid, DateTimeOffset startedAt, Func<SignalResult> action)
+    {
+        if (pid <= LastSystemPid)
+        {
+            return SignalResult.Refused;
+        }
+        using var process = OpenProcess(Synchronize | ProcessQueryLimitedInformation, 0, (uint)pid);
+        if (process.IsInvalid)
+        {
+            return Marshal.GetLastPInvokeError() == ErrorAccessDenied ? SignalResult.OtherUser : SignalResult.Gone;
+        }
+        if (WaitForSingleObject(process, 0) != WaitTimeout
+            || CreationTime(process) is not { } actual || !ProcessIdentity.Matches(actual, startedAt, TimeZoneInfo.Local))
+        {
+            return SignalResult.Gone;
+        }
+        return IsCurrentUser(process) ? action() : SignalResult.OtherUser;
+    }
+
+    private static DateTimeOffset? CreationTime(SafeProcessHandle process) =>
+        GetProcessTimes(process, out var creation, out _, out _, out _) != 0 && creation > 0
+            ? new DateTimeOffset(DateTime.FromFileTimeUtc(creation), TimeSpan.Zero)
+            : null;
+
     private static bool ReadTcpTable(uint family, List<(int Pid, int Port, string Address)> sockets)
     {
         uint size = 0;
@@ -403,6 +487,7 @@ internal static unsafe partial class WindowsProcesses
     private const int Tcp6RowSize = 56; // MIB_TCP6ROW_OWNER_PID
     private const uint ErrorInsufficientBuffer = 122;
     private const int ErrorInvalidParameter = 87;
+    private const int ErrorAccessDenied = 5;
     private const uint WaitTimeout = 0x102;
     private const nint InvalidHandle = -1;
 
