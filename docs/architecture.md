@@ -69,6 +69,9 @@ file of the same role:
 | `LaunchAtLogin.swift` | `Claudio.App/Services/LaunchAtLogin.cs` (the user's `Run` key) |
 | `Models/RoomPlan.swift`, `RoomScene.swift`, `RoomSky.swift`, `RoomVacuum.swift` | `Claudio.Core/Models/`, same names (points as `RoomPoint`; the clock's time zone is passed in) |
 | `Views/Room/RoomSprites.swift` | `RoomSprite`, `RoomGlyph` in `Claudio.Core/Design/RoomSprites.cs`; the Segoe glyphs and the stamps in `Claudio.App/Views/Room/RoomSprites.cs` |
+| `ViewModels/RoomViewModel.swift` | `Claudio.Core/ViewModels/RoomViewModel.cs`, its store (`IRoomStore`) kept by the App in its settings; `RoomTally` and the summary's sentences in `Claudio.Core/Presentation/RoomText.cs` |
+| `Views/Room/RoomView.swift`, `RoomOverview.swift`, `RoomSummary.swift`, `RoomAgentCard.swift` | `Claudio.App/Views/Room/`, same names (`RoomSwitcher`, `RoomBadge` in `RoomView.cs`) |
+| `App/RoomWindow.swift` | `Claudio.App/App/RoomWindow.cs`, a `FloatingPanel` that takes the keyboard; opened and closed from `App.Room.cs` |
 | `Views/Room/RoomPainter*.swift`, `RoomCanvas.swift` | `Claudio.App/Views/Room/`, one partial `RoomPainter` (`RoomPainter.Backdrop.cs`, …) on Win2D |
 | `Theme.swift`, `ClaudyTyping`, `ClaudyOverload`, `ClaudyWave`, `CardShadow` | `Claudio.Core/Design/` (from the shared data) |
 | `RootView.swift`, `FloatingPanel.swift` | `Claudio.App/Views/RootView.cs` on `App/FloatingPanel.cs` |
