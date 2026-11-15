@@ -122,6 +122,34 @@ public sealed class TrayIconImageTests
         Assert.Equal(0, dotted[8, 8].A);
     }
 
+    /// <summary>A session waiting for the user: an amber hand next to the clock, whole pixels at any size.</summary>
+    [Theory]
+    [InlineData(16)]
+    [InlineData(24)]
+    [InlineData(32)]
+    public void TheRaisedHandFillsItsIcon(int size)
+    {
+        var amber = _tokens.Color("color.accent.amber");
+        var hand = TrayAgents.PaintHand(amber, size);
+        Assert.Equal(size, hand.GetLength(0));
+        var inked = hand.Cast<Rgba>().Where(pixel => pixel.A > 0).ToList();
+        Assert.NotEmpty(inked);
+        Assert.All(inked, pixel => Assert.Equal(amber, pixel));
+        Assert.Equal(0, hand[0, 0].A);
+    }
+
+    /// <summary>The agents' Claudy carries its count on a dark plate in the bottom-right corner.</summary>
+    [Fact]
+    public void TheAgentsIconCarriesItsCount()
+    {
+        var sky = _tokens.Color("color.accent.sky");
+        var three = TrayAgents.PaintAgents(3, sky, 16, _mascot, _tokens);
+        var twelve = TrayAgents.PaintAgents(12, sky, 16, _mascot, _tokens);
+        Assert.Equal(new Rgba(0x1C, 0x17, 0x14), three[15, 15]);
+        Assert.Contains(sky, Enumerable.Range(7, 9).SelectMany(y => Enumerable.Range(7, 9).Select(x => three[y, x])));
+        Assert.Equal(TrayAgents.PaintAgents(9, sky, 16, _mascot, _tokens).Cast<Rgba>(), twelve.Cast<Rgba>());
+    }
+
     [Fact]
     public void TheStillWaveHasItsArmUp() => Assert.Equal("04-wave-up", _mascot.WaveStill.Name);
 }
