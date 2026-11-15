@@ -15,9 +15,9 @@ internal sealed partial class MenuBarPopover : FloatingPanel
     private readonly MenuBarView _view;
     private DateTimeOffset _hiddenAt = DateTimeOffset.MinValue;
 
-    public MenuBarPopover(UsageViewModel model, UpdateChecker updates, Action showWidget)
+    public MenuBarPopover(UsageViewModel model, UpdateChecker updates, Claudio.Core.ViewModels.AgentsViewModel agents, Action showWidget)
     {
-        _view = new MenuBarView(model, updates, showWidget);
+        _view = new MenuBarView(model, updates, agents, showWidget);
         Face = _view;
         IsDraggable = false;
         Title = "Claudio";

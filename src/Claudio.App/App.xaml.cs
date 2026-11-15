@@ -1,6 +1,7 @@
 using Claudio.Core.Design;
 using Claudio.Core.Models;
 using Claudio.Core.Services;
+using Claudio.Core.ViewModels;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 
@@ -9,12 +10,25 @@ namespace Claudio.App;
 /// <summary>
 /// Claudio starts where it was left: the floating card, the notification area, or the island at the
 /// top of the screen, with its icon next to the clock in every case. One view model drives every
-/// face, as Claudy's app delegate wires its card, menu bar item and island to one.
+/// face, as Claudy's app delegate wires its card, menu bar item and island to one; the sessions'
+/// view model feeds them all the agents and the waiting sessions, and the alerts.
 /// </summary>
 public partial class App : Application
 {
     private UsageViewModel? _model;
     private PortsViewModel? _ports;
+    private AgentsViewModel? _agents;
+    private WindowsSessions? _sessions;
+    private Notifier? _notifier;
+    private GlobalHotKey? _hotKey;
+    private GlobalHotKey? _roomHotKey;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _agentsTimer;
+    private readonly QuotaAlerts _quotaAlerts = new();
+    private readonly ActivityAlerts _activityAlerts = new();
+    private UsageSnapshot? _alerted;
+
+    /// <summary>The open sessions' ids, read by the ports scan on its own thread.</summary>
+    private volatile IReadOnlySet<string> _liveSessions = new HashSet<string>();
     private UpdateChecker? _updates;
     private RootView? _card;
     private MenuBarPopover? _flyout;
@@ -64,20 +78,33 @@ public partial class App : Application
         var ui = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         var model = new UsageViewModel(ui);
         var updates = new UpdateChecker(ui);
-        var ports = new PortsViewModel(ui);
+        // A server of a session still open is never listed: the ports scan asks which are.
+        var ports = new PortsViewModel(ui, () => _liveSessions);
+        var sessions = new WindowsSessions();
+        var agents = new AgentsViewModel(AgentScanner.Create(model.Home, sessions.Identity), sessions);
+        var notifier = new Notifier(ui);
         _model = model;
         _updates = updates;
         _ports = ports;
+        _sessions = sessions;
+        _agents = agents;
+        _notifier = notifier;
+        _hotKey = new GlobalHotKey('C', 1, GlobalHotKey.Display, ToggleClaudy);
+        _roomHotKey = new GlobalHotKey('R', 2, GlobalHotKey.RoomDisplay, ToggleRoom);
+        var actions = new ClaudioActions(ToggleClaudy, ToggleRoom, ExportUsage, Quit,
+                                         () => _hotKey?.IsRegistered == true, () => _roomHotKey?.IsRegistered == true);
+        ClaudyMenu Menu() => new(model, notifier, actions);
+        void ShowWidget() => model.Place(Placement.Widget);
 
-        var card = new RootView(model, updates, ports, Quit);
-        var flyout = new MenuBarPopover(model, updates, () => model.Place(Placement.Widget));
+        var card = new RootView(model, updates, ports, agents, Menu(), ToggleRoom, Quit);
+        var flyout = new MenuBarPopover(model, updates, agents, ShowWidget);
         _card = card;
         _flyout = flyout;
-        _tray = new MenuBarController(ui, TrayClicked, model, Quit);
+        _tray = new MenuBarController(ui, TrayClicked, model, Menu());
         _bubble = new UpdateBubblePanel(updates, CloseBubble);
         // The bubble follows the card when it is dragged or changes size.
         card.Placed += Announce;
-        _notch = new NotchController(model, updates, ui, Quit);
+        _notch = new NotchController(model, updates, agents, ui, Menu(), ShowWidget);
         // The open island carries the update line: the bubble has been answered.
         _notch.Opened += () =>
         {
@@ -107,15 +134,132 @@ public partial class App : Application
 
         model.OnUserRefresh = updates.CheckNow;
         model.Changed += Render;
+        model.Changed += AlertQuota;
         updates.Changed += Render;
         ports.Changed += Render;
+        agents.Changed += Render;
+        notifier.Changed += Render;
+        BindAlerts();
 
         card.Present();
         Place();
         Render();
         ports.Start();
+        StartAgents(ui);
+        notifier.Register();
+        _hotKey.Register();
+        _roomHotKey.Register();
         updates.Start();
         _ = Logged(model.RefreshAsync());
+        // `--room` on the command line opens the agent room at launch.
+        if (Environment.GetCommandLineArgs().Contains(RoomArgument))
+        {
+            ToggleRoom();
+        }
+    }
+
+    /// <summary>Claudy's <c>--room</c>: the agent room opens at launch.</summary>
+    private const string RoomArgument = "--room";
+
+    /// <summary>
+    /// The sessions are read every few seconds, faster while something works: the view model says
+    /// how long to wait after each pass.
+    /// </summary>
+    private void StartAgents(Microsoft.UI.Dispatching.DispatcherQueue ui)
+    {
+        var timer = ui.CreateTimer();
+        timer.IsRepeating = false;
+        timer.Interval = TimeSpan.FromMilliseconds(10);
+        timer.Tick += async (_, _) =>
+        {
+            if (_agents is not { } agents)
+            {
+                return;
+            }
+            try
+            {
+                await agents.RefreshAsync();
+            }
+#pragma warning disable CA1031 // A pass that fails is written down; the next one tries again.
+            catch (Exception error)
+#pragma warning restore CA1031
+            {
+                DiagnosticLog.Append($"sessions: {error.Message}");
+            }
+            _liveSessions = agents.Sessions.Select(session => session.Id).ToHashSet();
+            timer.Interval = agents.Interval ?? AgentsViewModel.QuietInterval;
+            timer.Start();
+        };
+        _agentsTimer = timer;
+        timer.Start();
+    }
+
+    /// <summary>
+    /// Every pass over the sessions goes through the rules, as every reading of the quota does;
+    /// what they call for is posted when its kind is switched on. A click on a banner about a
+    /// session brings that session's app forward; one about an agent opens the room on its desk.
+    /// </summary>
+    private void BindAlerts()
+    {
+        if (_agents is not { } agents || _notifier is not { } notifier)
+        {
+            return;
+        }
+        agents.OnPass = activity =>
+        {
+            var result = _activityAlerts.Evaluate(activity.Sessions, activity.Agents, DateTimeOffset.UtcNow);
+            notifier.Withdraw(result.Withdraw);
+            notifier.Deliver(result.Post);
+        };
+        notifier.OnOpenSession = agents.Focus;
+        notifier.OnOpenAgent = ShowAgent;
+    }
+
+    /// <summary>Each new reading of the quota, the demo set aside: nothing in it deserves a banner.</summary>
+    private void AlertQuota()
+    {
+        if (_model is not { HasLoaded: true } model || _notifier is null || ReferenceEquals(model.Snapshot, _alerted))
+        {
+            return;
+        }
+        _alerted = model.Snapshot;
+        if (!model.Snapshot.IsDemo)
+        {
+            _notifier.Deliver(_quotaAlerts.Evaluate(model.Snapshot.Session, DateTimeOffset.UtcNow));
+        }
+    }
+
+    /// <summary>The card's window, for the export's dialogs.</summary>
+    private void ExportUsage()
+    {
+        if (_model is { } model && _card is { } card)
+        {
+            model.ExportUsage(WinRT.Interop.WindowNative.GetWindowHandle(card));
+        }
+    }
+
+    /// <summary>
+    /// Ctrl+Alt+C, Claudy's ⌃⌥C: Claudio where it stands, shown or put away. The card comes and
+    /// goes, the short card above the clock opens and closes, the island opens and closes.
+    /// </summary>
+    private void ToggleClaudy()
+    {
+        switch (_model?.Placement.Effective(_model.HasNotchedScreen))
+        {
+            case Placement.Widget:
+                _card?.Toggle();
+                _updates?.AcknowledgeGreeting();
+                break;
+            case Placement.Notch:
+                if (_notch?.ToggleFromShortcut() != true)
+                {
+                    _flyout?.Toggle();
+                }
+                break;
+            default:
+                _flyout?.Toggle();
+                break;
+        }
     }
 
     private static async Task Logged(Task task)
@@ -165,12 +309,20 @@ public partial class App : Application
         _card.Update();
         _flyout.Update();
         _notch.Update();
+        if (_agents is { } agents)
+        {
+            // Finished agents stay listed a while; the icons count the ones still at it, in the
+            // colour of the one at work.
+            var lead = agents.Lead;
+            _tray.ShowTeam(agents.RunningCount, lead is null ? null : agents.Tint(lead), agents.Waiting.Count);
+        }
         _tray.Show(_model.Snapshot, _updates.IsGreeting, _updates.Available is not null, _model.HasLoaded);
         Announce();
 
         // The ports tab scans every few seconds while it is on screen, slowly otherwise: all a
         // hidden tab owes the user is a correct badge.
         var portsOnScreen = _model.Tab == Views.CardTab.Ports && _model.Placement == Placement.Widget && !_model.IsMinimal;
+        RenderRoom();
         if (portsOnScreen != _portsOnScreen && _ports is not null)
         {
             _portsOnScreen = portsOnScreen;
@@ -342,6 +494,12 @@ public partial class App : Application
     /// <summary>The icon goes first, or Windows leaves a ghost of it next to the clock.</summary>
     private void Quit()
     {
+        _agentsTimer?.Stop();
+        _hotKey?.Dispose();
+        _roomHotKey?.Dispose();
+        _notifier?.Dispose();
+        _agents?.Dispose();
+        CloseRoom();
         _tray?.Dispose();
         _notch?.Dispose();
         _updates?.ApplyOnExit();

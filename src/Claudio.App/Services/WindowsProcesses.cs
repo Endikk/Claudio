@@ -292,17 +292,6 @@ internal static unsafe partial class WindowsProcesses
         return (int)basic.InheritedFromUniqueProcessId;
     }
 
-    /// <summary>The full path of the program the process runs; null when it cannot be opened.</summary>
-    public static string? ExecutablePath(int pid)
-    {
-        if (pid <= LastSystemPid)
-        {
-            return null;
-        }
-        using var process = OpenProcess(ProcessQueryLimitedInformation, 0, (uint)pid);
-        return process.IsInvalid ? null : ImagePath(process);
-    }
-
     /// <summary>
     /// Runs <paramref name="action"/> while the process is held open, once it is checked to be the
     /// one that started at <paramref name="startedAt"/>, still running, and the current user's. While

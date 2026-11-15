@@ -2,6 +2,7 @@ using Claudio.Core.Design;
 using Claudio.Core.Models;
 using Claudio.Core.Presentation;
 using Claudio.Core.Services;
+using Claudio.Core.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Shapes;
@@ -11,7 +12,8 @@ namespace Claudio.App.Views;
 /// <summary>
 /// The short card that opens above the clock when Claudio lives in the notification area, Claudy's
 /// menu bar popover: built around charts rather than the widget's gauges, the quotas as rings with
-/// their pace, seven days as bars, and the week split by model. Details and ports stay in the widget.
+/// their pace, the agents at work in short, seven days as bars, and the week split by model; a
+/// session waiting for the user first. Details, ports and the agents' tracks stay in the widget.
 /// </summary>
 internal sealed partial class MenuBarView : StackPanel
 {
@@ -34,9 +36,17 @@ internal sealed partial class MenuBarView : StackPanel
     private readonly FontIcon _refresh;
     private readonly TextBlock _widget;
 
-    public MenuBarView(UsageViewModel model, UpdateChecker updates, Action showWidget)
+    private readonly AgentsViewModel _agents;
+    private readonly WaitingList _waiting;
+    private readonly AgentsShortList _agentsList;
+
+    public MenuBarView(UsageViewModel model, UpdateChecker updates, AgentsViewModel agents, Action showWidget)
     {
         _model = model;
+        _agents = agents;
+        _waiting = new WaitingList(agents, compact: true);
+        _agentsList = new AgentsShortList(agents, showWidget);
+        _agentsList.Margin = new Thickness(8, 4, 8, 4);
         _updates = updates;
         _signIn = new SignInControls(model);
         // Built once: an element can only ever have one parent, and the body is rebuilt at every reading.
@@ -53,6 +63,7 @@ internal sealed partial class MenuBarView : StackPanel
         var header = Ui.Spread(Ui.Row(8, _mascot, _name), _status);
         header.Margin = new Thickness(4, 0, 4, 0);
         Children.Add(header);
+        Children.Add(_waiting);
 
         for (var column = 0; column < 3; column++)
         {
@@ -97,6 +108,7 @@ internal sealed partial class MenuBarView : StackPanel
         _mascot.IsTyping = snapshot.Session.IsRunning(now);
         _name.Foreground = Ui.Primary(1);
 
+        _waiting.Update();
         _status.Children.Clear();
         if (_model.ErrorMessage is { } message)
         {
@@ -121,6 +133,12 @@ internal sealed partial class MenuBarView : StackPanel
             _weekly.Visibility = _scoped.Visibility = snapshot.Spend is null ? Visibility.Visible : Visibility.Collapsed;
             _body.Children.Add(_rings);
             // On the glass, apart by hairlines: only a waiting session is a block.
+            if (_agents.Agents.Count > 0)
+            {
+                _body.Children.Add(Ui.Rule());
+                _agentsList.Update();
+                _body.Children.Add(_agentsList);
+            }
             _body.Children.Add(Ui.Rule());
             _bars.Update(snapshot.History, Theme.Color(Accent.Coral));
             _body.Children.Add(_bars);

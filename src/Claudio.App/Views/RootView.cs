@@ -36,14 +36,20 @@ internal sealed partial class RootView : FloatingPanel
     private bool _isTyping;
     private string? _shape;
 
-    public RootView(UsageViewModel model, UpdateChecker updates, PortsViewModel ports, Action quit)
+    private readonly ClaudyMenu _menu;
+    private readonly SessionsView _sessions;
+
+    public RootView(UsageViewModel model, UpdateChecker updates, PortsViewModel ports, Claudio.Core.ViewModels.AgentsViewModel agents,
+                    ClaudyMenu menu, Action toggleRoom, Action quit)
     {
         _model = model;
         _updates = updates;
         _quit = quit;
+        _menu = menu;
+        _sessions = new SessionsView(agents, toggleRoom);
         _onboarding = new OnboardingView(model);
         _minimal = new MinimalView(model, updates);
-        _full = new FullView(model, updates, ports, new Grid(), () => { }, () => (0, 0));
+        _full = new FullView(model, updates, ports, _sessions, _sessions.Update, () => (agents.RunningCount, agents.Waiting.Count));
         Title = "Claudio";
 
         // Any click on the card counts as opening Claudio: the wave has been seen.
@@ -212,6 +218,24 @@ internal sealed partial class RootView : FloatingPanel
                 item.Icon = IslandIcon();
             }
             menu.Items.Add(item);
+        }
+        menu.Items.Add(new MenuFlyoutSeparator());
+        // One switch per kind, in two groups, as in the icon's menu.
+        var notifications = new MenuFlyoutSubItem { Text = "Notifications", Icon = new FontIcon { Glyph = "\uEA8F", FontFamily = Ui.Icons } };
+        foreach (var item in ClaudyMenu.FlyoutItems(_menu.NotificationEntries()))
+        {
+            notifications.Items.Add(item);
+        }
+        menu.Items.Add(notifications);
+        string[] glyphs = ["\uE7B3", "\uE716", "\uEDE1"];
+        var shared = ClaudyMenu.FlyoutItems(_menu.SharedEntries()).ToList();
+        for (var index = 0; index < shared.Count; index++)
+        {
+            if (shared[index] is MenuFlyoutItem entry && index < glyphs.Length)
+            {
+                entry.Icon = new FontIcon { Glyph = glyphs[index], FontFamily = Ui.Icons };
+            }
+            menu.Items.Add(shared[index]);
         }
         menu.Items.Add(new MenuFlyoutSeparator());
         if (_model.IsSignedIn)

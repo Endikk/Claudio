@@ -25,6 +25,8 @@
 
   <ItemGroup>
     <Content Include="Assets\Claudio.ico" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The picture Windows shows on Claudio's notifications: Claudy's icon, from the shared design. -->
+    <Content Include="$(ClaudyDataDir)Design\icon\icon-128.png" Link="Assets\Claudio.png" CopyToOutputDirectory="PreserveNewest" />
     <!-- Nunito, the rounded face standing in for Claudy's SF Pro Rounded (SIL Open Font License). -->
     <Content Include="Assets\Fonts\Nunito.ttf" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\Fonts\OFL.txt" CopyToOutputDirectory="PreserveNewest" />

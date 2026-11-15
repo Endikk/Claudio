@@ -19,6 +19,8 @@ internal sealed partial class MenuBarController : IDisposable
 {
     private readonly TrayIconWithContextMenu _tray = new("Claudio.Tray");
     private readonly TrayIconWithContextMenu _figure = new("Claudio.Figure");
+    private readonly SideIcon _waiting = new("Claudio.Waiting");
+    private readonly SideIcon _agents = new("Claudio.Agents");
     private readonly DispatcherQueue _ui;
     private readonly DispatcherQueueTimer _animation;
     private readonly DispatcherQueueTimer _retry;
@@ -45,17 +47,17 @@ internal sealed partial class MenuBarController : IDisposable
         Waving,
     }
 
-    public MenuBarController(DispatcherQueue ui, Action click, UsageViewModel model, Action quit)
+    public MenuBarController(DispatcherQueue ui, Action click, UsageViewModel model, ClaudyMenu menu)
     {
         _ui = ui;
         _model = model;
-        _menu = new ClaudyMenu(model, quit);
+        _menu = menu;
         _style = (_tokens.Color("color.accent.coral"), false, IconSize());
         _animation = ui.CreateTimer();
         _animation.IsRepeating = true;
         _animation.Tick += (_, _) => Advance();
 
-        foreach (var icon in new[] { _tray, _figure })
+        foreach (var icon in new[] { _tray, _figure, _waiting.Icon, _agents.Icon })
         {
             // The tray lives on its own thread: every action is handed back to the UI thread.
             icon.MessageWindow.MouseEventReceived += (_, args) =>
@@ -75,6 +77,8 @@ internal sealed partial class MenuBarController : IDisposable
         _tray.ContextMenu = Menu();
         _figure.ToolTip = "Claudio";
         _figure.ContextMenu = Menu();
+        _waiting.Icon.ContextMenu = Menu();
+        _agents.Icon.ContextMenu = Menu();
 
         // The notification area may not take icons yet (Claudio launched at sign-in, before Explorer
         // drew it) or at all (a server, a session without a shell). Creating an icon then throws on the
@@ -127,6 +131,15 @@ internal sealed partial class MenuBarController : IDisposable
         // Claudy's tooltip: the figure and when it resets, or just the name.
         var percent = lead.IsMeasured ? $"{UsageFormat.Percent(lead)}%" : UsageFormat.NoFigure;
         var tooltip = lead.IsActive(now) ? $"{lead.Title} {percent} · reset {UsageFormat.ResetTime(lead.ResetDate, now)}" : "Claudio";
+        // While agents run, how many; while a session waits, that it does.
+        if (_running > 0)
+        {
+            tooltip += " · " + (_running == 1 ? "1 agent running" : $"{_running} agents running");
+        }
+        if (_waitingCount > 0)
+        {
+            tooltip += " · " + (_waitingCount == 1 ? "a session waits for you" : $"{_waitingCount} sessions wait for you");
+        }
         if (_tray.IsCreated)
         {
             _tray.UpdateToolTip(tooltip);
@@ -176,13 +189,112 @@ internal sealed partial class MenuBarController : IDisposable
         }
         Draw();
         ShowFigure(lead, tooltip);
+        ShowTeam(tooltip);
 
-        var menuKey = $"{_model.Placement}|{_model.HasNotchedScreen}|{_model.IsSignedIn}|{_model.HasLoaded}|{_model.IsSigningIn}";
+        var menuKey = Describe(_menu.Entries());
         if (menuKey != _menuKey)
         {
             _menuKey = menuKey;
             _tray.ContextMenu = Menu();
             _figure.ContextMenu = Menu();
+            _waiting.Icon.ContextMenu = Menu();
+            _agents.Icon.ContextMenu = Menu();
+        }
+    }
+
+    private int _running;
+    private int _waitingCount;
+    private Rgba? _leadTint;
+
+    /// <summary>
+    /// The agents at work and the sessions waiting, as Claudy reads them for its menu bar title:
+    /// finished agents are not counted, and the tint is the one of the agent at work.
+    /// </summary>
+    public void ShowTeam(int running, Rgba? leadTint, int waiting)
+    {
+        _running = running;
+        _leadTint = leadTint;
+        _waitingCount = waiting;
+    }
+
+    /// <summary>
+    /// After the figure, as Claudy's title runs on: an amber raised hand while a session waits, then
+    /// the lead agent's Claudy and the count while agents run. Only while Claudio lives in the
+    /// notification area, as the figure.
+    /// </summary>
+    private void ShowTeam(string tooltip)
+    {
+        var here = _model.Placement.Effective(_model.HasNotchedScreen) == Placement.NotificationArea && TaskbarExists();
+        var size = IconSize();
+        var amber = _tokens.Color("color.accent.amber");
+        _waiting.Show(here && _waitingCount > 0, $"hand|{size}", () => TrayAgents.PaintHand(amber, size), tooltip, size);
+        _agents.Show(here && _running > 0 && _leadTint is not null, $"agents|{_running}|{_leadTint}|{size}",
+                     () => TrayAgents.PaintAgents(_running, _leadTint ?? amber, size, _mascot, _tokens), tooltip, size);
+    }
+
+    /// <summary>One more square next to the clock, drawn from a picture and swapped only when it changes.</summary>
+    private sealed class SideIcon(string name) : IDisposable
+    {
+        private string _key = string.Empty;
+        private nint _handle;
+
+        public TrayIconWithContextMenu Icon { get; } = new(name);
+
+        public void Show(bool wanted, string key, Func<Rgba[,]> paint, string tooltip, int size)
+        {
+            if (!wanted)
+            {
+                if (Icon.IsCreated)
+                {
+                    Icon.TryRemove();
+                }
+                return;
+            }
+            if (key != _key)
+            {
+                _key = key;
+                var previous = _handle;
+                var bytes = TrayIconImage.ToIconResource(paint());
+                _handle = CreateIconFromResourceEx(bytes, (uint)bytes.Length, true, IconVersion, size, size, 0);
+                if (Icon.IsCreated)
+                {
+                    Icon.UpdateIcon(_handle);
+                }
+                else
+                {
+                    Icon.Icon = _handle;
+                }
+                if (previous != 0)
+                {
+                    DestroyIcon(previous);
+                }
+            }
+            if (!Icon.IsCreated)
+            {
+                Icon.Icon = _handle;
+                Icon.ToolTip = tooltip;
+                Icon.Create();
+            }
+            Icon.UpdateToolTip(tooltip);
+        }
+
+        /// <summary>Explorer restarted, or the scale changed: drawn and created again at the next reading.</summary>
+        public void Reset()
+        {
+            if (Icon.IsCreated)
+            {
+                Icon.TryRemove();
+            }
+            _key = string.Empty;
+        }
+
+        public void Dispose()
+        {
+            Icon.Dispose();
+            if (_handle != 0)
+            {
+                DestroyIcon(_handle);
+            }
         }
     }
 
@@ -316,23 +428,51 @@ internal sealed partial class MenuBarController : IDisposable
         return frame with { Rows = rows };
     }
 
-    /// <summary>Claudy's short menu, <see cref="ClaudyMenu"/>: refresh, the other placements, the account, quit.</summary>
+    /// <summary>Claudy's short menu, <see cref="ClaudyMenu"/>, as a Win32 menu.</summary>
     private PopupMenu Menu()
     {
         var menu = new PopupMenu();
-        foreach (var entry in _menu.Entries())
+        foreach (var item in MenuItems(_menu.Entries()))
         {
-            if (entry.Title is null)
-            {
-                menu.Items.Add(new PopupMenuSeparator());
-                continue;
-            }
-            // The tray lives on its own thread: every action is handed back to the UI thread.
-            var action = entry.Action;
-            menu.Items.Add(new PopupMenuItem(entry.Title, (_, _) => _ui.TryEnqueue(() => action?.Invoke())) { Enabled = action is not null });
+            menu.Items.Add(item);
         }
         return menu;
     }
+
+    private IEnumerable<PopupItem> MenuItems(IEnumerable<ClaudyMenu.Entry> entries)
+    {
+        foreach (var entry in entries)
+        {
+            if (entry.Title is null)
+            {
+                yield return new PopupMenuSeparator();
+                continue;
+            }
+            if (entry.Submenu is { } submenu)
+            {
+                var sub = new PopupSubMenu(entry.Title);
+                foreach (var child in MenuItems(submenu))
+                {
+                    sub.Items.Add(child);
+                }
+                yield return sub;
+                continue;
+            }
+            // The tray lives on its own thread: every action is handed back to the UI thread. A
+            // shortcut goes after a tab, which Windows aligns on the right as menus write it.
+            var action = entry.IsHeader ? null : entry.Action;
+            var text = entry.Shortcut is { } shortcut ? $"{entry.Title}	{shortcut}" : entry.Title;
+            yield return new PopupMenuItem(text, (_, _) => _ui.TryEnqueue(() => action?.Invoke()))
+            {
+                Enabled = action is not null,
+                Checked = entry.IsChecked == true,
+            };
+        }
+    }
+
+    /// <summary>What the menu says now, to rebuild it only when that changes.</summary>
+    private static string Describe(IEnumerable<ClaudyMenu.Entry> entries) =>
+        string.Join('|', entries.Select(entry => $"{entry.Title}{entry.IsChecked}{entry.Action is null}{entry.Shortcut}[{(entry.Submenu is null ? string.Empty : Describe(entry.Submenu))}]"));
 
     /// <summary>One icon per frame, tint and dot, made once: the loops only swap handles.</summary>
     private nint Icon(SpriteFrame frame, string key)
@@ -367,6 +507,8 @@ internal sealed partial class MenuBarController : IDisposable
     private void Restyle()
     {
         Forget();
+        _waiting.Reset();
+        _agents.Reset();
         _style = _style with { Size = IconSize() };
         _figureKey = string.Empty;
         Draw();
@@ -378,6 +520,8 @@ internal sealed partial class MenuBarController : IDisposable
         {
             _tray.TryRemove();
             _figure.TryRemove();
+            _waiting.Reset();
+            _agents.Reset();
             _shown = 0;
             // Explorer says its taskbar is back, but the window it is found by may take a moment.
             CreateWhenReady();
@@ -404,6 +548,8 @@ internal sealed partial class MenuBarController : IDisposable
         _animation.Stop();
         _retry.Stop();
         _figure.Dispose();
+        _waiting.Dispose();
+        _agents.Dispose();
         _tray.Dispose();
         Forget();
         if (_figureIcon != 0)

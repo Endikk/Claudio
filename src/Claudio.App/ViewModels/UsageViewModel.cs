@@ -10,7 +10,7 @@ namespace Claudio.App;
 /// widget's preferences and the sign-in state. Every change raises <see cref="Changed"/> on the UI
 /// thread, and the views redraw from it.
 /// </summary>
-internal sealed class UsageViewModel : IDisposable
+internal sealed partial class UsageViewModel : IDisposable
 {
     /// <summary>
     /// Three minutes: Anthropic's quotas move by the minute, and polling faster brought nothing

@@ -1,5 +1,6 @@
 using Claudio.App.Views;
 using Claudio.Core.Services;
+using Claudio.Core.ViewModels;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Windows.Foundation;
@@ -12,7 +13,7 @@ namespace Claudio.App;
 /// rest, the island open underneath on hover. The app shows it instead of the card when the user
 /// picks it; the icon next to the clock stays, and a click on it opens or closes the island.
 /// </summary>
-internal sealed class NotchController : IDisposable
+internal sealed partial class NotchController : IDisposable
 {
     /// <summary>Long enough for the closing spring to come to rest.</summary>
     private static readonly TimeSpan SettleDelay = TimeSpan.FromSeconds(0.5);
@@ -36,12 +37,20 @@ internal sealed class NotchController : IDisposable
     private bool _stepsAside;
     private int _ticks;
 
-    public NotchController(UsageViewModel model, UpdateChecker updates, DispatcherQueue ui, Action quit)
+    private readonly AgentsViewModel _agents;
+    private readonly Action _showWidget;
+
+    /// <summary>While the shortcut holds the island open: a click anywhere else closes it, since no pointer leaving it will.</summary>
+    private bool _watchesOutsideClicks;
+
+    public NotchController(UsageViewModel model, UpdateChecker updates, AgentsViewModel agents, DispatcherQueue ui, ClaudyMenu menu, Action showWidget)
     {
         _model = model;
         _updates = updates;
+        _agents = agents;
+        _showWidget = showWidget;
         _ui = ui;
-        _menu = new ClaudyMenu(model, quit);
+        _menu = menu;
         _hover = new NotchHover(Open, Close, After, () => !_model.IsAwaitingManualCode && !_isMenuOpen);
         // Made at launch with Claudio's other windows: made later, once another window had been
         // shown, the island's window showed on screen without ever drawing its content.
@@ -145,6 +154,64 @@ internal sealed class NotchController : IDisposable
         }
     }
 
+    /// <summary>
+    /// The shortcut opens the island, or closes it, as Claudy's <c>toggle</c>. False when the island
+    /// is not on screen.
+    /// </summary>
+    public bool ToggleFromShortcut()
+    {
+        if (_panel?.IsShown != true)
+        {
+            return false;
+        }
+        var opening = !_hover.IsOpen;
+        _hover.Toggle();
+        WatchOutsideClicks(opening);
+        return true;
+    }
+
+    /// <summary>
+    /// Clicks in other apps: Windows tells no app about them, so the island's own timer looks at
+    /// the mouse buttons, fast while the shortcut holds it open.
+    /// </summary>
+    private void WatchOutsideClicks(bool watching)
+    {
+        _watchesOutsideClicks = watching;
+        _watch.Interval = TimeSpan.FromMilliseconds(watching ? 50 : 250);
+        if (watching)
+        {
+            // Forget a press made before the island opened.
+            _ = GetAsyncKeyState(LeftButton);
+            _ = GetAsyncKeyState(RightButton);
+        }
+    }
+
+    private const int LeftButton = 0x01;
+    private const int RightButton = 0x02;
+
+    [System.Runtime.InteropServices.LibraryImport("user32.dll")]
+    private static partial short GetAsyncKeyState(int key);
+
+    /// <summary>A click elsewhere closes an island the shortcut opened, unless the pointer has come onto it.</summary>
+    private void CheckOutsideClick()
+    {
+        if (!_watchesOutsideClicks)
+        {
+            return;
+        }
+        if (!_hover.IsOpen)
+        {
+            WatchOutsideClicks(false);
+            return;
+        }
+        var pressed = (GetAsyncKeyState(LeftButton) & 0x8001) != 0 | (GetAsyncKeyState(RightButton) & 0x8001) != 0;
+        if (pressed && _panel?.HoldsCursor() != true)
+        {
+            _hover.Toggle();
+            WatchOutsideClicks(false);
+        }
+    }
+
     public void Update()
     {
         if (_view is null || _panel is null)
@@ -169,7 +236,7 @@ internal sealed class NotchController : IDisposable
 
     private NotchPanel MakePanel()
     {
-        _view = new NotchView(_model, _updates);
+        _view = new NotchView(_model, _updates, _agents, _showWidget);
         _view.ShapeChanged += Fit;
         var panel = new NotchPanel(_view);
         panel.PointerCrossed += _hover.Crossed;
@@ -180,6 +247,7 @@ internal sealed class NotchController : IDisposable
 
     private void Collapse()
     {
+        WatchOutsideClicks(false);
         _hover.Reset();
         _settle.Stop();
         _settleFrame = null;
@@ -265,8 +333,9 @@ internal sealed class NotchController : IDisposable
         {
             return;
         }
+        CheckOutsideClick();
         // Every two seconds: a game or a presentation running full screen in front.
-        if (++_ticks % 8 == 0)
+        if (++_ticks % (_watchesOutsideClicks ? 40 : 8) == 0)
         {
             var stepsAside = PanelChrome.IsFullScreenAppInFront();
             if (stepsAside != _stepsAside)

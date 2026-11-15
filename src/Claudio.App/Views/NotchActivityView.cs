@@ -1,6 +1,7 @@
 using Claudio.Core.Design;
 using Claudio.Core.Presentation;
 using Claudio.Core.Services;
+using Claudio.Core.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Foundation;
@@ -11,8 +12,9 @@ namespace Claudio.App.Views;
 /// The open island, as Claudy's <c>NotchActivityView</c>, laid out round the notch like the Dynamic
 /// Island round the camera: the mascot on the notch's left and the session figure on its right, each
 /// a short flight from its ear; the model at work under the notch; then the session's bar, its pace
-/// and reset, and the other quotas across the full width. The island flies the mascot and the figure
-/// in: here they only mark where they land.
+/// and reset, and the other quotas across the full width, then the agents at work in short; a
+/// session waiting for the user before the quotas. The island flies the mascot and the figure in:
+/// here they only mark where they land.
 /// </summary>
 internal sealed partial class NotchActivityView : StackPanel
 {
@@ -42,9 +44,16 @@ internal sealed partial class NotchActivityView : StackPanel
     private readonly UpdateRow _updateRow;
     private readonly List<(Grid Row, TextBlock Title, UsageBar Bar, TextBlock Value)> _small = [];
 
-    public NotchActivityView(UsageViewModel model, UpdateChecker updates)
+    private readonly WaitingList _waiting;
+    private readonly AgentsShortList _agentsList;
+    private readonly AgentsViewModel _agents;
+
+    public NotchActivityView(UsageViewModel model, UpdateChecker updates, AgentsViewModel agents, Action showWidget)
     {
         _model = model;
+        _agents = agents;
+        _waiting = new WaitingList(agents);
+        _agentsList = new AgentsShortList(agents, showWidget, showsElapsed: true);
         _updateRow = new UpdateRow(updates);
         _signIn = new SignInControls(model);
         // Built once: an element can only ever have one parent, and the body is rebuilt at every reading.
@@ -74,6 +83,8 @@ internal sealed partial class NotchActivityView : StackPanel
         Grid.SetColumn(reading, 2);
         _top.Children.Add(reading);
         Children.Add(_top);
+        // An answer is what unblocks the work: it comes before the quotas.
+        Children.Add(_waiting);
 
         _window = Ui.Column(7, _bar, Ui.Spread(_pace, _reset, minimumGap: 8));
         Children.Add(_window);
@@ -101,6 +112,8 @@ internal sealed partial class NotchActivityView : StackPanel
         }
         Children.Add(_others);
         Children.Add(_signedOut);
+        // Agents do not depend on the account: Claude Code's own files say what runs.
+        Children.Add(_agentsList);
 
         var dot = Ui.Dot(5, Theme.Danger);
         dot.VerticalAlignment = VerticalAlignment.Center;
@@ -171,6 +184,13 @@ internal sealed partial class NotchActivityView : StackPanel
         if (!showsQuotas)
         {
             _signIn.Update();
+        }
+
+        _waiting.Update();
+        _agentsList.Visibility = _agents.Agents.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (_agents.Agents.Count > 0)
+        {
+            _agentsList.Update();
         }
 
         var error = _model.ErrorMessage;

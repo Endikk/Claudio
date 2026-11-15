@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Claudio.Core.Design;
+using Claudio.Core.ViewModels;
 using Claudio.Core.Services;
 using Microsoft.UI;
 using Microsoft.UI.Composition;
@@ -53,6 +54,13 @@ internal sealed partial class NotchView : Grid
     private readonly IslandPercent _flyFigure = new() { IsHitTestVisible = false };
     private readonly CompositeTransform _figureFlight = new();
     private readonly StackPanel _dots = new() { Spacing = 3, IsHitTestVisible = false };
+    private readonly AgentsViewModel _agents;
+    private readonly AgentsEarBadge _earBadge;
+    private readonly ContentControl _team = new() { IsHitTestVisible = false, IsTabStop = false };
+    private bool _showsTeam;
+
+    /// <summary>Keeps the agents clear of the black that melts the notch into the ear.</summary>
+    private const double CollarClearance = 9;
     private readonly Stopwatch _fadeClock = new();
     private readonly Stopwatch _frameClock = new();
 
@@ -72,11 +80,13 @@ internal sealed partial class NotchView : Grid
     /// <summary>A session waits for the user: at rest, the ears warm to amber.</summary>
     public bool IsWaiting { get; set; }
 
-    public NotchView(UsageViewModel model, UpdateChecker updates)
+    public NotchView(UsageViewModel model, UpdateChecker updates, AgentsViewModel agents, Action showWidget)
     {
         _model = model;
         _updates = updates;
-        _content = new NotchActivityView(model, updates) { Opacity = 0, Visibility = Visibility.Collapsed, RenderTransform = _contentScale };
+        _agents = agents;
+        _earBadge = new AgentsEarBadge(agents);
+        _content = new NotchActivityView(model, updates, agents, showWidget) { Opacity = 0, Visibility = Visibility.Collapsed, RenderTransform = _contentScale };
         RequestedTheme = ElementTheme.Dark;
         Background = new SolidColorBrush(Colors.Transparent);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(this, "Claudio");
@@ -111,6 +121,7 @@ internal sealed partial class NotchView : Grid
         _clipped.Children.Add(_restMascot);
         _clipped.Children.Add(_restFigure);
         _clipped.Children.Add(_dots);
+        _clipped.Children.Add(_team);
         _clipped.Children.Add(_flyMascot);
         _clipped.Children.Add(_flyFigure);
         foreach (var layer in new UIElement[] { _shadow, _glass, _wash, _shade, _clipped, _rim, _waitingRim })
@@ -124,6 +135,15 @@ internal sealed partial class NotchView : Grid
         visual.Clip = visual.Compositor.CreateGeometricClip(_clip);
 
         SizeChanged += (_, _) => Apply();
+        // A click on the ears goes straight to the session that waits, open or not.
+        Tapped += (_, args) =>
+        {
+            if (args.GetPosition(this).Y <= _notch.Height && _agents.Waiting.Count > 0)
+            {
+                args.Handled = true;
+                _agents.Focus(_agents.Waiting[0]);
+            }
+        };
         Unloaded += (_, _) => StopAnimating();
     }
 
@@ -189,7 +209,26 @@ internal sealed partial class NotchView : Grid
         _restFigure.Update(lead);
         _flyFigure.Update(lead);
         var percent = lead.IsMeasured ? $"{Claudio.Core.Presentation.UsageFormat.Percent(lead)}%" : Claudio.Core.Presentation.UsageFormat.NoFigure;
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(this, $"Claudio, {lead.Title} {percent}");
+        var waits = _agents.Waiting.Count > 0;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(this, waits ? $"Claudio, {lead.Title} {percent}, a session waits for you" : $"Claudio, {lead.Title} {percent}");
+
+        // At rest, the agents' count, or the waiting hand, shares the left ear with Claudy rather
+        // than widening the ears: wider, the island would run over what sits beside it.
+        IsWaiting = waits;
+        _showsTeam = waits || _agents.RunningCount > 0;
+        if (waits)
+        {
+            _team.Content = Ui.Hand(10, Theme.Color(Accent.Amber));
+        }
+        else if (_agents.RunningCount > 0)
+        {
+            _earBadge.Update();
+            _team.Content = _earBadge;
+        }
+        else
+        {
+            _team.Content = null;
+        }
 
         _dots.Children.Clear();
         if (_updates.Available is not null)
@@ -397,7 +436,9 @@ internal sealed partial class NotchView : Grid
         // The ears: the mascot in the left one, the figure in the right one, both centred on the
         // notch's height. Open, both fly to where the open view marks them.
         var earsLeft = (width - EarsWidth) / 2;
-        var mascotRest = new Point(earsLeft + (NotchLayout.EarWidth / 2), _notch.Height / 2);
+        // Beside its agents, Claudy steps to the ear's outer edge to make room for them.
+        var teamShift = _showsTeam ? ((NotchLayout.EarWidth - _restMascot.Width) / 2) - 1 : 0;
+        var mascotRest = new Point(earsLeft + (NotchLayout.EarWidth / 2) - teamShift, _notch.Height / 2);
         var figureRest = new Point(earsLeft + EarsWidth - (NotchLayout.EarWidth / 2), _notch.Height / 2);
         var mascotLanded = new Point(contentLeft + _mascotLanding.X, _mascotLanding.Y);
         var figureLanded = new Point(contentLeft + _figureLanding.X, _figureLanding.Y);
@@ -411,6 +452,11 @@ internal sealed partial class NotchView : Grid
             Lerp(1.0 / 3, 1, p), _flyMascot.Width, _flyMascot.Height);
         Fly(_flyFigure, _figureFlight, Lerp(figureRest.X, figureLanded.X, p), Lerp(figureRest.Y, figureLanded.Y, p),
             Lerp(IslandPercent.RestingSize / IslandPercent.LandedSize, 1, p), _flyFigure.DesiredSize.Width, _flyFigure.DesiredSize.Height);
+
+        _team.Visibility = resting && _showsTeam ? Visibility.Visible : Visibility.Collapsed;
+        _team.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(_team, earsLeft + NotchLayout.EarWidth - CollarClearance - _team.DesiredSize.Width);
+        Canvas.SetTop(_team, (_notch.Height - _team.DesiredSize.Height) / 2);
 
         // The open view carries its own update row and error line.
         _dots.Visibility = _isOpen || _dots.Children.Count == 0 ? Visibility.Collapsed : Visibility.Visible;

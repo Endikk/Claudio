@@ -3,9 +3,9 @@ using System.Security.Cryptography;
 using System.Text;
 using Claudio.Core.Services;
 using Microsoft.UI.Dispatching;
-using Microsoft.Windows.AppLifecycle;
-using Microsoft.Windows.AppNotifications;
-using Microsoft.Windows.AppNotifications.Builder;
+using Microsoft.Win32;
+using Windows.Data.Xml.Dom;
+using Windows.UI.Notifications;
 
 namespace Claudio.App;
 
@@ -13,11 +13,13 @@ namespace Claudio.App;
 /// Sends Claudio's notifications, each kind behind its own switch, and hands the session or agent a
 /// banner spoke of to the app when it is clicked, as Claudy's <c>Notifier</c>.
 ///
-/// Windows notifications come from the Windows App SDK's <see cref="AppNotificationManager"/>,
-/// which an unpackaged app registers for itself: <see cref="Register"/> at launch, before anything
-/// is posted, <see cref="Dispose"/> at exit, and <see cref="UnregisterAll"/> at uninstall, which
-/// <c>Program</c> hooks into Velopack. Windows asks the user nothing, unlike macOS: notifications
-/// are on until the user turns them off in Settings ▸ System ▸ Notifications, which
+/// Windows' own toasts carry them. The Windows App SDK's app notifications need its Singleton
+/// package, which a self-contained Claudio does not have (registering failed with "module not
+/// found"), so Claudio files itself under an app id of its own in the user's registry, as Windows
+/// lets an unpackaged app do: <see cref="Register"/> at launch, before anything is posted, and
+/// <see cref="UnregisterAll"/> at uninstall, which <c>Program</c> hooks into Velopack. A click on a
+/// banner reaches Claudio while it runs. Windows asks the user nothing, unlike macOS:
+/// notifications are on until the user turns them off in Settings ▸ System ▸ Notifications, which
 /// <see cref="IsDenied"/> reports and <see cref="OpenSettings"/> leads to.
 ///
 /// Every call is made on the UI thread, and none throws: a system that will not notify is logged,
@@ -29,6 +31,10 @@ internal sealed class Notifier : IDisposable
     private const string QuotaGroup = "quota";
     private const string SessionsGroup = "sessions";
 
+    /// <summary>The app id Windows files Claudio's banners under.</summary>
+    private const string AppId = "Endikk.Claudio";
+    private const string AppIdKey = @"Software\Classes\AppUserModelId\" + AppId;
+
     private const string SessionArgument = "sessionID";
     private const string AgentArgument = "agentID";
 
@@ -37,13 +43,17 @@ internal sealed class Notifier : IDisposable
 
     private readonly DispatcherQueue _ui;
     private readonly HashSet<NotificationKind> _enabled;
+    /// <summary>The banners on show: Windows raises their click on the object itself, which must live.</summary>
+    private readonly Dictionary<string, ToastNotification> _shown = [];
+    private ToastNotifier? _notifier;
     private bool _isRegistered;
+    private bool _hasLoggedSetting;
     private bool _hasTriedToRegister;
 
     public Notifier(DispatcherQueue ui)
     {
         _ui = ui;
-        _enabled = NotificationKinds.All.Where(Preferences.IsNotifying).ToHashSet();
+        _enabled = Claudio.Core.Services.NotificationKinds.All.Where(Preferences.IsNotifying).ToHashSet();
     }
 
     /// <summary>Raised on the UI thread when a switch or <see cref="IsDenied"/> changes, for the menu to follow.</summary>
@@ -80,29 +90,14 @@ internal sealed class Notifier : IDisposable
         _hasTriedToRegister = true;
         try
         {
-            if (!AppNotificationManager.IsSupported())
+            using (var key = Registry.CurrentUser.CreateSubKey(AppIdKey))
             {
-                DiagnosticLog.Append("notifications: not supported on this system");
-                return;
+                key.SetValue("DisplayName", "Claudio");
+                key.SetValue("IconUri", Path.Combine(AppContext.BaseDirectory, "Assets", "Claudio.png"));
+                key.SetValue("ShowInSettings", 1, RegistryValueKind.DWord);
             }
-            var manager = AppNotificationManager.Default;
-            // Subscribed before registering, or a click that launched Claudio would be lost.
-            manager.NotificationInvoked += OnInvoked;
-            try
-            {
-                manager.Register();
-            }
-            catch (Exception error) when (IsSystemFailure(error))
-            {
-                manager.NotificationInvoked -= OnInvoked;
-                throw;
-            }
+            _notifier = ToastNotificationManager.CreateToastNotifier(AppId);
             _isRegistered = true;
-
-            if (AppInstance.GetCurrent().GetActivatedEventArgs() is { Kind: ExtendedActivationKind.AppNotification, Data: AppNotificationActivatedEventArgs launch })
-            {
-                Dispatch(launch);
-            }
         }
         catch (Exception error) when (IsSystemFailure(error))
         {
@@ -120,10 +115,17 @@ internal sealed class Notifier : IDisposable
     {
         try
         {
-            if (AppNotificationManager.IsSupported())
-            {
-                AppNotificationManager.Default.UnregisterAll();
-            }
+            ToastNotificationManager.History.Clear(AppId);
+        }
+#pragma warning disable CA1031 // The uninstaller goes on whatever this throws.
+        catch (Exception error)
+#pragma warning restore CA1031
+        {
+            DiagnosticLog.Append($"notifications: history not cleared: {error.Message}");
+        }
+        try
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(AppIdKey, throwOnMissingSubKey: false);
         }
 #pragma warning disable CA1031 // The uninstaller goes on whatever this throws.
         catch (Exception error)
@@ -139,9 +141,9 @@ internal sealed class Notifier : IDisposable
     /// </summary>
     public void RefreshPermission()
     {
-        var isDenied = Setting() is AppNotificationSetting.DisabledForApplication
-                                  or AppNotificationSetting.DisabledForUser
-                                  or AppNotificationSetting.DisabledByGroupPolicy;
+        var isDenied = Setting() is NotificationSetting.DisabledForApplication
+                                  or NotificationSetting.DisabledForUser
+                                  or NotificationSetting.DisabledByGroupPolicy;
         if (isDenied != IsDenied)
         {
             IsDenied = isDenied;
@@ -178,7 +180,7 @@ internal sealed class Notifier : IDisposable
         }
         Register();
         RefreshPermission();
-        if (!_isRegistered || Setting() != AppNotificationSetting.Enabled)
+        if (!_isRegistered || Setting() != NotificationSetting.Enabled)
         {
             return;
         }
@@ -198,58 +200,78 @@ internal sealed class Notifier : IDisposable
         }
         foreach (var id in ids)
         {
-            _ = RemoveAsync(Tag(id));
+            var tag = Tag(id);
+            _shown.Remove(tag);
+            try
+            {
+                ToastNotificationManager.History.Remove(tag, SessionsGroup, AppId);
+                ToastNotificationManager.History.Remove(tag, QuotaGroup, AppId);
+            }
+            catch (Exception error) when (IsSystemFailure(error))
+            {
+                DiagnosticLog.Append($"notifications: withdrawal failed: {error.Message}");
+            }
         }
     }
 
     /// <summary>Settings ▸ System ▸ Notifications, where Claudio's switch is.</summary>
     public static void OpenSettings() => Shell.Open(new Uri("ms-settings:notifications"));
 
-    /// <summary>
-    /// Unregisters at exit, so a click on a banner left in the notification centre launches
-    /// Claudio again rather than calling into a process that is gone.
-    /// </summary>
+    /// <summary>At exit the banners left in the notification centre stay; their clicks go nowhere.</summary>
     public void Dispose()
     {
-        if (!_isRegistered)
-        {
-            return;
-        }
         _isRegistered = false;
-        try
-        {
-            var manager = AppNotificationManager.Default;
-            manager.NotificationInvoked -= OnInvoked;
-            manager.Unregister();
-        }
-        catch (Exception error) when (IsSystemFailure(error))
-        {
-            DiagnosticLog.Append($"notifications: unregistration failed: {error.Message}");
-        }
+        _shown.Clear();
+        _notifier = null;
     }
 
     /// <summary>
     /// The tag is the alert's id, so posting the same event again replaces its banner and
     /// <see cref="Withdraw"/> finds it; the group is Claudy's thread.
     /// </summary>
-    private static void Post(Alert alert)
+    private void Post(Alert alert)
     {
+        if (_notifier is null)
+        {
+            return;
+        }
         try
         {
-            var builder = new AppNotificationBuilder()
-                .AddText(alert.Title)
-                .AddText(alert.Body)
-                .SetTag(Tag(alert.Id))
-                .SetGroup(alert.Kind.IsQuota() ? QuotaGroup : SessionsGroup);
+            var launch = new List<string>();
             if (alert.SessionId is { } session)
             {
-                builder.AddArgument(SessionArgument, session);
+                launch.Add($"{SessionArgument}={Uri.EscapeDataString(session)}");
             }
             if (alert.AgentId is { } agent)
             {
-                builder.AddArgument(AgentArgument, agent);
+                launch.Add($"{AgentArgument}={Uri.EscapeDataString(agent)}");
             }
-            AppNotificationManager.Default.Show(builder.BuildNotification());
+            var document = new XmlDocument();
+            var toast = document.CreateElement("toast");
+            toast.SetAttribute("launch", string.Join('&', launch));
+            var visual = document.CreateElement("visual");
+            var binding = document.CreateElement("binding");
+            binding.SetAttribute("template", "ToastGeneric");
+            foreach (var line in new[] { alert.Title, alert.Body })
+            {
+                var text = document.CreateElement("text");
+                text.InnerText = line;
+                binding.AppendChild(text);
+            }
+            visual.AppendChild(binding);
+            toast.AppendChild(visual);
+            document.AppendChild(toast);
+
+            var tag = Tag(alert.Id);
+            var notification = new ToastNotification(document)
+            {
+                Tag = tag,
+                Group = alert.Kind.IsQuota() ? QuotaGroup : SessionsGroup,
+            };
+            notification.Activated += (_, args) => Dispatch(args is ToastActivatedEventArgs activated ? activated.Arguments : string.Empty);
+            notification.Dismissed += (_, _) => _ui.TryEnqueue(() => _shown.Remove(tag));
+            _shown[tag] = notification;
+            _notifier.Show(notification);
         }
         catch (Exception error) when (IsSystemFailure(error))
         {
@@ -257,42 +279,41 @@ internal sealed class Notifier : IDisposable
         }
     }
 
-    private static async Task RemoveAsync(string tag)
-    {
-        try
-        {
-            await AppNotificationManager.Default.RemoveByTagAsync(tag);
-        }
-        catch (Exception error) when (IsSystemFailure(error))
-        {
-            DiagnosticLog.Append($"notifications: withdrawal failed: {error.Message}");
-        }
-    }
-
     /// <summary>An id longer than Windows takes is hashed, the same way each time.</summary>
     private static string Tag(string id) =>
         id.Length <= MaximumTag ? id : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(id)))[..32];
 
-    private static AppNotificationSetting Setting()
+    private NotificationSetting Setting()
     {
+        if (_notifier is null)
+        {
+            return NotificationSetting.DisabledForApplication;
+        }
         try
         {
-            return AppNotificationManager.IsSupported() ? AppNotificationManager.Default.Setting : AppNotificationSetting.Unsupported;
+            return _notifier.Setting;
         }
         catch (Exception error) when (IsSystemFailure(error))
         {
-            DiagnosticLog.Append($"notifications: setting unreadable: {error.Message}");
-            return AppNotificationSetting.Unsupported;
+            // Windows reads the switch of an app it finds a Start menu shortcut for: a copy run
+            // from its build folder has none. Its banners still go out, and Windows itself drops
+            // them if the user turned Claudio off: unknown reads as on, said once in the log.
+            if (!_hasLoggedSetting)
+            {
+                _hasLoggedSetting = true;
+                DiagnosticLog.Append($"notifications: setting unreadable (0x{error.HResult:X8}), taken as on");
+            }
+            return NotificationSetting.Enabled;
         }
     }
 
-    /// <summary>Windows raises a click on a worker thread.</summary>
-    private void OnInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args) => Dispatch(args);
-
-    /// <summary>The arguments are copied before the hop: the event's object belongs to the thread that raised it.</summary>
-    private void Dispatch(AppNotificationActivatedEventArgs args)
+    /// <summary>Windows raises a click on a worker thread: the arguments go over to the UI thread.</summary>
+    private void Dispatch(string launch)
     {
-        var arguments = new Dictionary<string, string>(args.Arguments, StringComparer.Ordinal);
+        var arguments = launch.Split('&', StringSplitOptions.RemoveEmptyEntries)
+                              .Select(pair => pair.Split('=', 2))
+                              .Where(pair => pair.Length == 2)
+                              .ToDictionary(pair => pair[0], pair => Uri.UnescapeDataString(pair[1]), StringComparer.Ordinal);
         _ui.TryEnqueue(() => Open(arguments));
     }
 
