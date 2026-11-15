@@ -143,6 +143,60 @@ Closing a port refuses whenever closing would be worse than leaving it open: a p
 time changed since the scan (a reused process number), Claudio itself and its ancestors, a running
 Claude. Its children go first, then the process.
 
+### Sessions and agents
+
+The Sessions tab lists every Claude Code session open on this PC and the subagents each one runs,
+from files Claude Code keeps anyway; nothing is installed in Claude Code for it:
+
+- `%USERPROFILE%\.claude\sessions\<pid>.json`, one per open Claude Code process, gives each
+  session its id, name and status, rewritten as it changes: `busy` while it works, `idle` at its
+  prompt, `waiting` when it asks the user something, with what it waits for in `waitingFor`. A
+  file whose process is gone belongs to a closed session and is ignored. Its `procStart` (a
+  FILETIME on Windows) is checked against the process's own creation time, so a pid Windows has
+  handed to another program is never taken for the session.
+- `<projects>\<folder>\<session>.jsonl`, the session's transcript, for the last thing the user
+  asked it (`last-prompt` lines) and its own last tool call; Claudio reads its tail once, then
+  only what is appended.
+- `<projects>\<folder>\<session>\subagents\agent-<id>.meta.json` holds what an agent was asked
+  and, once it is over, `finished`; `agent-<id>.jsonl` beside it is its transcript, of which only
+  the tool calls are read.
+
+Sessions inside WSL distributions are not listed: their pids are Linux's, which Windows cannot
+check.
+
+Sessions waiting for the user come first, in an amber tile that names what they wait for and
+offers "Open": it brings forward the app the session runs in, found up its process tree (Windows
+Terminal, VS Code, Cursor, a JetBrains IDE…), or the console window a session was opened in.
+Then come the sessions at work, then those at rest. Sessions a program drives through the Agent
+SDK are listed only while they run agents.
+
+A click unfolds a session: its folder, its app, when it opened, its agent count, the last thing
+asked of it, "Open", and "Interrupt" while it works or waits. Agents have no process of their own,
+so after a confirmation that names the session, Claudio sends the session what Ctrl+C sends in its
+terminal: it attaches to the session's console for a moment and raises Ctrl+C there. The turn
+stops and every agent of that session with it; the session stays open. Right before, the process
+is held open and checked again against the session's start time and its owner.
+
+Each agent sits under its session with its own Claudy, its colour kept while it runs, typing
+while it works and grey after a minute of silence, and its track: its tool calls over the last ten
+minutes, one bar per fifteen seconds, writes in coral. Three minutes of silence are called out in
+amber; a finished agent stays ten minutes, marked done with the files it wrote. No file says how
+far along an agent is, so no percentage is shown.
+
+The short card above the clock and the open island put the waiting sessions first, then the
+agents in short. Next to the clock, an amber hand joins the figure while a session waits, then the
+lead agent's Claudy with the count. The island at rest puts the count in its left ear in the lead
+agent's colour, or, while a session waits, a raised hand on glass turned amber; a click on the
+ears opens that session's app.
+
+### Keyboard shortcuts
+
+Ctrl+Alt+C, from any app, shows or hides Claudio where it stands: the card comes and goes, the
+short card opens and closes, the island opens and closes (a click elsewhere closes it again).
+Ctrl+Alt+R opens or closes the agent room. They go through `RegisterHotKey`, which needs no
+permission; when another app already holds one, the menu says so rather than promising it. They
+are Claudy's ⌃⌥C and ⌃⌥R.
+
 ### MCP servers left behind
 
 Claude Code runs MCP servers as child processes that talk over their standard input, with no
