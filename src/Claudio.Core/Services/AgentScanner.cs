@@ -777,13 +777,40 @@ public sealed class AgentScanner : IAgentScanning
         return name.Length == 0 ? null : name;
     }
 
+    /// <summary>The earliest and latest instants a date holds, in milliseconds since 1970.</summary>
+    private static readonly double EarliestMilliseconds = (DateTimeOffset.MinValue - DateTimeOffset.UnixEpoch).TotalMilliseconds;
+    private static readonly double LatestMilliseconds = (DateTimeOffset.MaxValue - DateTimeOffset.UnixEpoch).TotalMilliseconds;
+
+    /// <summary>
+    /// A date written in milliseconds. A number no date can hold, in a damaged file, reads as no
+    /// date: Swift's <c>Date(timeIntervalSince1970:)</c> never fails, and one bad field must not
+    /// stop the whole pass.
+    /// </summary>
     private static DateTimeOffset? Milliseconds(double? value) =>
-        value is { } milliseconds && double.IsFinite(milliseconds)
+        value is { } milliseconds && double.IsFinite(milliseconds) && milliseconds > EarliestMilliseconds && milliseconds < LatestMilliseconds
             ? DateTimeOffset.UnixEpoch.AddTicks((long)(milliseconds * TimeSpan.TicksPerMillisecond))
             : null;
 
-    private static string? Text(JsonElement element, string name) =>
-        element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+    /// <summary>
+    /// A string field. A lone half of a surrogate pair, which JavaScript writes when a string was
+    /// cut through an emoji, reads as no text rather than throwing: Swift's reading skips that
+    /// value, and the lines after it must still be read.
+    /// </summary>
+    private static string? Text(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+        try
+        {
+            return value.GetString();
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
 
     private static double? Number(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var number)

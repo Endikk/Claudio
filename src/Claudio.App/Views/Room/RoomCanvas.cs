@@ -91,16 +91,30 @@ internal sealed partial class RoomCanvas : Grid
 
         PointerMoved += (_, args) => Hover(args.GetCurrentPoint(this).Position);
         PointerExited += (_, _) => ShowHelp(null, false);
-        PointerPressed += OnPressed;
+        // A click is the left button let go over what it pressed, as Claudy's buttons take it.
+        PointerPressed += (_, args) =>
+        {
+            var point = args.GetCurrentPoint(this);
+            _pressed = point.Properties.IsLeftButtonPressed ? point.Position : null;
+        };
+        PointerReleased += OnReleased;
         Loaded += (_, _) =>
         {
             if (XamlRoot is { } root)
             {
-                root.Changed += (_, _) => Resume();
+                root.Changed -= RootChanged;
+                root.Changed += RootChanged;
             }
             Resume();
         };
-        Unloaded += (_, _) => Resume();
+        Unloaded += (_, _) =>
+        {
+            if (XamlRoot is { } root)
+            {
+                root.Changed -= RootChanged;
+            }
+            Resume();
+        };
         UpdateName();
     }
 
@@ -321,19 +335,30 @@ internal sealed partial class RoomCanvas : Grid
         ToolTipService.SetToolTip(_canvas, help);
     }
 
-    private void OnPressed(object sender, PointerRoutedEventArgs args)
+    private Windows.Foundation.Point? _pressed;
+
+    private void RootChanged(XamlRoot sender, XamlRootChangedEventArgs args) => Resume();
+
+    private void OnReleased(object sender, PointerRoutedEventArgs args)
     {
-        if (Scene is not { } provider)
+        var point = args.GetCurrentPoint(this);
+        if (_pressed is not { } pressed || Scene is not { } provider || point.Properties.PointerUpdateKind != Microsoft.UI.Input.PointerUpdateKind.LeftButtonReleased)
+        {
+            _pressed = null;
+            return;
+        }
+        _pressed = null;
+        var scene = provider(Clock(), false);
+        var (act, help) = Spot(point.Position, scene);
+        // Let go over another spot than the one pressed: no click, as a button does.
+        var (pressedAct, pressedHelp) = Spot(pressed, scene);
+        if (act is null || pressedAct is null || help != pressedHelp)
         {
             return;
         }
-        var (act, _) = Spot(args.GetCurrentPoint(this).Position, provider(Clock(), false));
-        if (act is not null)
-        {
-            act();
-            args.Handled = true;
-            _canvas.Invalidate();
-        }
+        act();
+        args.Handled = true;
+        _canvas.Invalidate();
     }
 
     // Drawing

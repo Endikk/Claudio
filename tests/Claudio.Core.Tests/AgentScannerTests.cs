@@ -441,4 +441,35 @@ public sealed class AgentScannerTests : IDisposable
         WriteAgent("s1", "early", Running, [Prompt(Now.AddSeconds(-600))], Now);
         Assert.Equal(["early", "late"], Scanner().Scan().Select(agent => agent.Id));
     }
+
+    // Claudio's own: a damaged file costs a field, never the pass.
+
+    /// <summary>A number no date can hold, in a damaged session file, reads as no date; the pass goes on.</summary>
+    [Fact]
+    public void ADateOutOfRangeDoesNotStopThePass()
+    {
+        WriteSession(LivePid, "s1", "claire-bb", "/Users/me/Claire", extra: new JsonObject { ["startedAt"] = 1e17, ["statusUpdatedAt"] = -1e17 });
+        var session = Assert.Single(Scanner().ScanActivity().Sessions);
+        Assert.Equal("s1", session.Id);
+        Assert.Null(session.OpenedAt);
+    }
+
+    /// <summary>
+    /// A lone half of a surrogate pair, which JavaScript writes when a string was cut through an
+    /// emoji, costs that value alone: the calls after it are still read.
+    /// </summary>
+    [Fact]
+    public void ALoneSurrogateCostsOnlyItsValue()
+    {
+        const char Backslash = (char)92;
+        WriteSession(LivePid, "s1", "claire-bb", "/Users/me/Claire");
+        var transcript = WriteAgent("s1", "a1", Running, [Prompt(Now.AddSeconds(-60))], Now);
+        var broken = "{\"type\":\"assistant\",\"timestamp\":\"" + Stamp(Now.AddSeconds(-30))
+            + "\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"id\":\"t0\",\"name\":\"Bash\",\"input\":{\"command\":\"echo " + Backslash + "ud800\"}}]}}" + "\n";
+        File.AppendAllText(transcript, broken + Jsonl(Tool("t1", "Read", With(("file_path", "/repo/a.swift")), Now.AddSeconds(-10))));
+        File.SetLastWriteTimeUtc(transcript, Now.UtcDateTime);
+        var agent = Assert.Single(Scanner().Scan());
+        Assert.Equal("Read", agent.LastAction?.Tool);
+        Assert.Equal(2, agent.ActionCount);
+    }
 }

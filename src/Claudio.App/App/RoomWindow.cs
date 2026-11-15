@@ -50,6 +50,7 @@ internal sealed partial class RoomWindow : FloatingPanel
         if (IsOpen)
         {
             Activate();
+            WindowsSessions.Raise(WinRT.Interop.WindowNative.GetWindowHandle(this));
             return;
         }
         Face = view;
@@ -59,6 +60,9 @@ internal sealed partial class RoomWindow : FloatingPanel
         PlaceRoughly();
         AppWindow.Show(activateWindow: true);
         Activate();
+        // Opened from a shortcut or a menu while another app is in front: Windows keeps a new
+        // window behind it unless it is brought forward, and a room nobody sees is no room.
+        WindowsSessions.Raise(WinRT.Interop.WindowNative.GetWindowHandle(this));
         Centre();
     }
 

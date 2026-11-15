@@ -157,8 +157,9 @@ public partial class App : Application
         card.Present();
         Place();
         Render();
-        ports.Start();
-        StartAgents(ui);
+        // The ports scan starts after the first pass over the sessions: before it, every MCP
+        // server would read as left behind by a closed session.
+        StartAgents(ui, ports.Start);
         notifier.Register();
         _hotKey.Register();
         _roomHotKey.Register();
@@ -178,8 +179,9 @@ public partial class App : Application
     /// The sessions are read every few seconds, faster while something works: the view model says
     /// how long to wait after each pass.
     /// </summary>
-    private void StartAgents(Microsoft.UI.Dispatching.DispatcherQueue ui)
+    private void StartAgents(Microsoft.UI.Dispatching.DispatcherQueue ui, Action afterFirstPass)
     {
+        var first = afterFirstPass;
         var timer = ui.CreateTimer();
         timer.IsRepeating = false;
         timer.Interval = TimeSpan.FromMilliseconds(10);
@@ -200,6 +202,11 @@ public partial class App : Application
                 DiagnosticLog.Append($"sessions: {error.Message}");
             }
             _liveSessions = agents.Sessions.Select(session => session.Id).ToHashSet();
+            if (first is { } start)
+            {
+                first = null;
+                start();
+            }
             timer.Interval = agents.Interval ?? AgentsViewModel.QuietInterval;
             timer.Start();
         };

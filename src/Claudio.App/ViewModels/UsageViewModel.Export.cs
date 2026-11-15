@@ -84,7 +84,11 @@ internal sealed partial class UsageViewModel
             }
             try
             {
-                await File.WriteAllTextAsync(file.Path, csv, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                // Written beside, then swapped in, as Claudy writes it atomically: a failure halfway
+                // never leaves half a file over the one the user chose.
+                var beside = file.Path + ".claudio-tmp";
+                await File.WriteAllTextAsync(beside, csv, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                File.Move(beside, file.Path, overwrite: true);
             }
 #pragma warning disable CA1031 // A write that fails is told to the user, never thrown.
             catch (Exception error)

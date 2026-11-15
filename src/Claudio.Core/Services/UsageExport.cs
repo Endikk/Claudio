@@ -58,7 +58,8 @@ public static class UsageExport
                 row.CacheReadTokens.ToString(CultureInfo.InvariantCulture),
                 row.CacheWriteTokens.ToString(CultureInfo.InvariantCulture),
                 // The invariant culture: the separator is a point even in France.
-                row.ListPrice.ToString("F4", CultureInfo.InvariantCulture),
+                // printf's rounding, half to even, as Claudy's %.4f.
+                Math.Round(row.ListPrice, 4, MidpointRounding.ToEven).ToString("F4", CultureInfo.InvariantCulture),
             ];
             file.AppendJoin(',', fields.Select(Escape)).Append('\n');
         }

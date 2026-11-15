@@ -78,7 +78,8 @@ public static class PortsText
             return string.Create(CultureInfo.InvariantCulture, $"{megabytes} MB");
         }
         var gigabytes = (double)bytes / (BytesPerMegabyte * MegabytesPerGigabyte);
-        return gigabytes.ToString("0.0", CultureInfo.InvariantCulture) + " GB";
+        // printf's rounding, half to even, as Claudy's %.1f: 1280 MB reads "1.2 GB" in both.
+        return Math.Round(gigabytes, 1, MidpointRounding.ToEven).ToString("0.0", CultureInfo.InvariantCulture) + " GB";
     }
 
     /// <summary>The kill button's accessible name on a server's row.</summary>

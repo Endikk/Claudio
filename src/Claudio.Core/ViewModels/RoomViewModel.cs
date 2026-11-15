@@ -107,7 +107,24 @@ public sealed class RoomViewModel : IDisposable
         _clock = clock ?? (() => DateTimeOffset.UtcNow);
         _reducesMotion = reducesMotion ?? (() => false);
         _hiddenIds = new HashSet<string>(store.HiddenRooms, StringComparer.Ordinal);
-        _agents.Changed += Sync;
+        _agents.Changed += AgentsChanged;
+    }
+
+    private ValueList<RunningAgent>? _seenAgents;
+    private ValueList<ClaudeSession>? _seenSessions;
+
+    /// <summary>
+    /// The room sits everyone again when the agents or the sessions change, as Claudy's does when
+    /// either list is published anew; not on every tick of the sessions' clock, nor when a row of
+    /// the card unfolds, or an agent would move when Claudy keeps it still.
+    /// </summary>
+    private void AgentsChanged()
+    {
+        if (Equals(_agents.Agents, _seenAgents) && Equals(_agents.Sessions, _seenSessions))
+        {
+            return;
+        }
+        Sync();
     }
 
     /// <summary>Raised after anything the room shows changes, on the thread that changed it.</summary>
@@ -250,6 +267,8 @@ public sealed class RoomViewModel : IDisposable
     /// <summary>Reads the sessions and agents again and seats everyone.</summary>
     public void Sync()
     {
+        _seenAgents = _agents.Agents;
+        _seenSessions = _agents.Sessions;
         var now = _clock();
         _open = ProjectsOf(_agents.Groups);
         // A room put away is forgotten once its sessions close: the folder opened again is a room
@@ -615,5 +634,5 @@ public sealed class RoomViewModel : IDisposable
         }
     }
 
-    public void Dispose() => _agents.Changed -= Sync;
+    public void Dispose() => _agents.Changed -= AgentsChanged;
 }

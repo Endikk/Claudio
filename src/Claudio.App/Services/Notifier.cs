@@ -269,7 +269,15 @@ internal sealed class Notifier : IDisposable
                 Group = alert.Kind.IsQuota() ? QuotaGroup : SessionsGroup,
             };
             notification.Activated += (_, args) => Dispatch(args is ToastActivatedEventArgs activated ? activated.Arguments : string.Empty);
-            notification.Dismissed += (_, _) => _ui.TryEnqueue(() => _shown.Remove(tag));
+            // A banner that timed out goes to the notification centre, where a click still
+            // comes back through this object: only one the user closed, or Claudio hid, is let go.
+            notification.Dismissed += (_, args) =>
+            {
+                if (args.Reason is ToastDismissalReason.UserCanceled or ToastDismissalReason.ApplicationHidden)
+                {
+                    _ui.TryEnqueue(() => _shown.Remove(tag));
+                }
+            };
             _shown[tag] = notification;
             _notifier.Show(notification);
         }

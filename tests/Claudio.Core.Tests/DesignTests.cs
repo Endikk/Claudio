@@ -62,6 +62,14 @@ public sealed class DesignTests
         Assert.All(used, ink => Assert.NotNull(_mascot.Paint(ink, coral, _tokens)));
     }
 
+    /// <summary>Claudy's own values: 0.7 s left at 0.5 s into the loop, 0.09 s at 1.2 s.</summary>
+    [Fact]
+    public void TheWaveWaitsAsClaudysDoes()
+    {
+        Assert.Equal(0.7, _mascot.TimeToNextWaveFrame(TimeSpan.FromSeconds(0.5)).TotalSeconds, 3);
+        Assert.Equal(0.09, _mascot.TimeToNextWaveFrame(TimeSpan.FromSeconds(1.2)).TotalSeconds, 3);
+    }
+
     /// <summary>The wave is woken when its frame changes: the wait always lands on the next frame.</summary>
     [Fact]
     public void TheWaveWakesWhenItsFrameChanges()

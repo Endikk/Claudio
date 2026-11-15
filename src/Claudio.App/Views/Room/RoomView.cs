@@ -18,6 +18,7 @@ namespace Claudio.App;
 internal sealed partial class RoomView : Grid
 {
     private readonly RoomViewModel _room;
+    private readonly Button _menuButton;
     private readonly AgentsViewModel _agents;
     private readonly UsageViewModel _usage;
     private readonly RoomCanvas _canvas = new();
@@ -57,6 +58,7 @@ internal sealed partial class RoomView : Grid
         Grid.SetColumn(_switcher, 1);
         header.Children.Add(_switcher);
         var (menu, _) = Ui.RoundButton(RoomGlyphs.Ellipsis, () => { }, "The weather in the window");
+        _menuButton = menu;
         menu.Click += (_, _) => Menu().ShowAt(menu);
         Ui.Name(menu, "Room options");
         Grid.SetColumn(menu, 3);
@@ -104,6 +106,7 @@ internal sealed partial class RoomView : Grid
     /// <summary>Reads the room's model again: the projects, the drawing's inputs, the cards over it, the footer.</summary>
     public void Update()
     {
+        Ui.Tooltip(_menuButton, _room.Hidden.Count == 0 ? "The weather in the window" : "The weather in the window, and the rooms put away");
         _switcher.Update();
         var overview = ShowsOverview;
         if (overview != _showsOverview)

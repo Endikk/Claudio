@@ -54,6 +54,8 @@ public sealed class PortsTextTests
     {
         Assert.Equal("412 MB", PortsText.Memory(412UL << 20));
         Assert.Equal("0 MB", PortsText.Memory(0));
+        // printf rounds half to even, as Claudy's %.1f: 1280 MB is 1.25 GB, read "1.2 GB".
+        Assert.Equal("1.2 GB", PortsText.Memory(1280UL << 20));
         Assert.Equal("1.1 GB", PortsText.Memory(1_101UL << 20));
         Assert.Equal("1.0 GB", PortsText.Memory((1_023UL << 20) + (900UL << 10)));
     }

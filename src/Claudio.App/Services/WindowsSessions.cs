@@ -145,13 +145,23 @@ internal sealed unsafe partial class WindowsSessions : IProcessKernel, ISessionA
         {
             return false;
         }
+        Raise(window);
+        return true;
+    }
+
+    /// <summary>
+    /// Brings a window to the front and gives it the keyboard: restored if minimised, then set in
+    /// front, and only if Windows refuses, once more with the input of the window in front attached.
+    /// </summary>
+    public static void Raise(nint window)
+    {
         if (IsIconic(window) != 0)
         {
             _ = ShowWindow(window, SwRestore);
         }
         if (SetForegroundWindow(window) != 0)
         {
-            return true;
+            return;
         }
         var foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), null);
         var current = GetCurrentThreadId();
@@ -168,7 +178,6 @@ internal sealed unsafe partial class WindowsSessions : IProcessKernel, ISessionA
                 _ = AttachThreadInput(current, foregroundThread, 0);
             }
         }
-        return true;
     }
 
     // MARK: - Windows
