@@ -189,6 +189,70 @@ lead agent's Claudy with the count. The island at rest puts the count in its lef
 agent's colour, or, while a session waits, a raised hand on glass turned amber; a click on the
 ears opens that session's app.
 
+### The agent room
+
+"Open agent room", in the card's menu, the notification area's and the island's, "Room" in the
+Sessions tab, and Ctrl+Alt+R from any app, open a window in the middle of the screen: one open
+space per project, a project being the folder its sessions run in. Claudy sits at the centre desk
+for the session; its agents sit around it, four areas of six desks. `Claudio.exe --room` opens it
+at launch. The window has the card's glass and moves from anywhere like the card, but it is an
+ordinary window: it does not stay above the others, it is listed in Alt+Tab, and Escape closes it.
+
+What an agent does is read from each tool call of its transcript, never from a list of known
+skills: the tool (Read is a search, Edit a write), the file written (`plan.md` under `specs\` is a
+spec, a `.tf` file is infra) and, for a shell call, the command. A line that chains commands is
+named by its most telling one: `cd app && npm test` is tests. A skill or an MCP server nobody has
+heard of shows under its own name, and the commands it runs are read like any other. A command
+whose program says nothing is "terminal".
+
+Each kind of work belongs to one of three families, and each family has an area: writing,
+commands, research. The fourth area is spare. An agent sits in the area of the family most of its
+calls of the last ninety seconds fall in, so that one read between two edits does not send it
+across the room, and stays put twenty seconds after a move. When an area is full, an empty one
+takes the same work until it empties. Past twenty-four agents, the last ones have no desk.
+
+A screen shows the symbol of its agent's last call (Claudy's SF Symbols, drawn with their Segoe
+Fluent Icons counterparts), amber for a session waiting on the user (on Claudy's own screen), red
+for an agent silent for three minutes, green for one that is done. Claudy's first screen shows
+the session's own last tool call, read from the tail of its transcript like its last prompt, while
+that call is less than two minutes old; otherwise that it runs its agents, or that it thinks.
+Claudy's second screen draws the session quota as the card's ring; a click on it opens a summary
+in sentences: what was asked, what happens now, the limit, "Open" and "Interrupt" as the Sessions
+tab offers them. A click on a desk opens its agent's card: what it does now, its calls before
+that, the files it wrote. An agent silent for a minute, waiting on a long command or on its
+parent, dozes at its desk.
+
+An agent that is done leaves its desk for the sofa, four places, and walks out by the door when it
+leaves the list; with the sofa full it goes straight out. A Claudy leaves and reaches its desk by
+the aisle behind its row, so it never walks through its neighbours. Past three quarters of the
+session quota the racks' lights turn amber, past nine tenths red, with a red glow at the room's
+edges. Nobody walks in for a room that was already at work when it opened.
+
+The window is drawn from the hour alone: the sky blends from one moment of the day to the next, the
+sun crosses it from six to six and stands in the middle at noon, the moon does the same by night,
+and each window of the city has a fixed threshold that decides when it lights up, so the same ones
+come on first every evening: a third of them at half past five, nearly all at nine, a fifth at
+midnight. A window of the city fades in and out rather than switching. The hour is the PC's own,
+in the window as on the wall clock: there is nothing to set. The weather asks nothing of the
+network: each day has its own, worked out from its date. Half the days are clear, two in ten
+overcast, three in ten wet, and from December to February what falls is mostly snow. The room's
+menu can hold one weather instead.
+
+With more than one project open, "All" lays every project out as a small room, drawn once a
+second; a click enters one. A room is named after its sessions' folder, whatever opened them: a
+conversation of the Claude desktop app works in a folder of its own, `scratch-` and a date, and
+gets a room like any other. A cross beside a room's name, under the pointer, puts the room away. It
+comes back from the room's menu, when a banner leads to one of its agents, or once its sessions
+have closed and the folder is opened again; until then it stays away across launches. A click on
+a banner about an agent opens the room of its project with its card open; a banner about a session
+still brings the session's app forward.
+
+What never moves (floor, walls, furniture, a desk's own furniture, the symbols of the screens) and
+the words on the signs are drawn once and kept. The rest is redrawn thirty times a second, so that
+the vacuum glides and a Claudy walks without a jolt. The window's sky and city are redrawn five
+times a second, and what falls in front of them thirty. Nothing is drawn once the room is closed,
+or while its window is hidden or minimised.
+
 ### Keyboard shortcuts
 
 Ctrl+Alt+C, from any app, shows or hides Claudio where it stands: the card comes and goes, the

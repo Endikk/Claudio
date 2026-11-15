@@ -64,22 +64,23 @@ src/Claudio.Core/      every rule, no Windows API (tested on any OS)
 │                      ModelName · PlanLabel · NotchGeometry · NotchLayout · NotchHover ·
 │                      PortScanner · PortReaper · ProcessTable · ProcessEnvironment ·
 │                      McpScanner · AlertRules · UsageExport · AgentScanner · ProcessIdentity
-├── ViewModels/        AgentsViewModel (the sessions and their agents, driven by the App)
-├── Presentation/      UsageFormat (figures, dates, pace) · NotchActivity · PortsText
+├── ViewModels/        AgentsViewModel (the sessions and their agents, driven by the App) · RoomViewModel
+├── Presentation/      UsageFormat (figures, dates, pace) · NotchActivity · PortsText · RoomText
 └── Design/            Claudy's tokens, Theme, the mascot, CardShadow, NotchShape, the tray icon,
                        the room's sprite and screen symbols (RoomSprites)
 src/Claudio.App/       the WinUI 3 app (Windows App SDK, unpackaged, self-contained)
 ├── App/               Program (Velopack first) · FloatingPanel (the glass window) · MenuBarController
 │                      (the icon next to the clock) · MenuBarPopover (the short card above it) ·
 │                      NotchController · NotchPanel (the island) · ClaudyMenu · UpdateBubblePanel ·
-│                      PanelChrome (the windows' Win32 flags)
+│                      PanelChrome (the windows' Win32 flags) · RoomWindow (the agent room)
 ├── Services/          UpdateChecker (Velopack) · LaunchAtLogin · Preferences · WindowsProcesses ·
 │                      WindowsSessions · Notifier · WslSources · ClaudeCredentialsStore (Credential
 │                      Manager) · DiagnosticLog
 ├── ViewModels/        UsageViewModel · PortsViewModel
 ├── Theme/             Ui (type, inks, capsules) · Motion (springs) · TransparentBackdrop
 ├── Views/             RootView · FullView · MinimalView · OnboardingView · MenuBarView · PortsView ·
-│                      NotchView · NotchActivityView · Components/ · Room/ (RoomPainter, RoomCanvas, on Win2D)
+│                      NotchView · NotchActivityView · Components/ · Room/ (RoomView · RoomOverview ·
+│                      RoomSummary · RoomAgentCard, and RoomPainter · RoomCanvas on Win2D)
 └── Assets/            the icon, and Nunito, the rounded face (SIL Open Font License)
 tests/                 xUnit, on Claudio.Core
 claudy/                Design/ and Fixtures/ pulled from Claudy, never edited here

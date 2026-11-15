@@ -112,6 +112,9 @@ public partial class App : Application
         _flyout = flyout;
         _tray = new MenuBarController(ui, TrayClicked, model, Menu());
         _bubble = new UpdateBubblePanel(updates, CloseBubble);
+        // Every window is made at launch: the room's is shown only when it is opened.
+        _roomWindow = new RoomWindow();
+        _roomWindow.CloseRequested += CloseRoom;
         // The bubble follows the card when it is dragged or changes size.
         card.Placed += Announce;
         _notch = new NotchController(model, updates, agents, ui, Menu(), ShowWidget);

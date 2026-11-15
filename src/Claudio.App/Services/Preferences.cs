@@ -50,6 +50,22 @@ internal static class Preferences
         set => Store.Set("update.announced", value);
     }
 
+    private const char Line = (char)10;
+
+    /// <summary>The agent rooms put away, as Claudy's <c>roomHidden</c>: one folder name a line.</summary>
+    public static IReadOnlyList<string> HiddenRooms
+    {
+        get => Store.Text("room.hidden") is { Length: > 0 } text ? text.Split(Line, StringSplitOptions.RemoveEmptyEntries) : [];
+        set => Store.Set("room.hidden", value.Count == 0 ? null : string.Join(Line, value));
+    }
+
+    /// <summary>The weather in the agent room's window, as Claudy's <c>roomWeather</c>: one of its names, or "auto".</summary>
+    public static string RoomWeather
+    {
+        get => Store.Text("room.weather") ?? Claudio.Core.Models.RoomWeathers.AsItComes;
+        set => Store.Set("room.weather", value);
+    }
+
     /// <summary>Whether a kind of notification is switched on, as Claudy's <c>claudy.notify.&lt;kind&gt;</c>.</summary>
     public static bool IsNotifying(NotificationKind kind) => Store.Bool($"notify.{kind.RawValue()}", kind.IsOnByDefault());
 
