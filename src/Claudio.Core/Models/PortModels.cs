@@ -25,12 +25,35 @@ public sealed record ListeningPort(
     PortAttribution Attribution,
     int? SessionRootPid);
 
+/// <summary>
+/// An MCP server Claude Code launched over stdio and left running when its session ended, as
+/// Claudy's <c>McpOrphan</c>. It holds no port, so the TCP table never sees it: its environment and
+/// command line give it away.
+/// </summary>
+/// <param name="Pid">The top of the orphaned tree: <c>cmd.exe /c npx …</c>, not the <c>node</c> it spawned.</param>
+/// <param name="ResidentBytes">
+/// The working set of the top process and everything under it, in bytes: what a kill gives back.
+/// </param>
+public sealed record McpOrphan(
+    string Id,
+    int Pid,
+    DateTimeOffset StartedAt,
+    string Name,
+    string? ProjectName,
+    ulong ResidentBytes);
+
 /// <summary>What the Ports tab shows: a scan under way, its result, or why there is none.</summary>
 public abstract record PortScanState
 {
     private PortScanState()
     {
     }
+
+    /// <summary>
+    /// The processes this scan lists by port, which the MCP scan skips so no process is listed
+    /// twice. None when the scan could not run: the MCP scan does not need it.
+    /// </summary>
+    public IReadOnlySet<int> ListedPids => this is Ready ready ? ready.Ports.Select(port => port.Pid).ToHashSet() : new HashSet<int>();
 
     /// <summary>The first scan has not answered yet.</summary>
     public sealed record Scanning : PortScanState

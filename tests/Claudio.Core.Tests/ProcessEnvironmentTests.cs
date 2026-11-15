@@ -17,6 +17,24 @@ public sealed class ProcessEnvironmentTests
         Assert.Equal(@"C:\Users\x\Dev\Surikat", markers.ProjectDirectory);
     }
 
+    /// <summary>
+    /// The session id is what tells an MCP server still serving a live session apart from one
+    /// whose session is over, when the process tree alone cannot.
+    /// </summary>
+    [Fact]
+    public void ReadsSessionId() =>
+        Assert.Equal(new ProcessEnvironment.Markers(true, null, "7f3c9a2e-41d8-4b6e-9b1a-2c5d8e0f4a11"),
+                     ProcessEnvironment.ParseBlock("CLAUDECODE=1\0CLAUDE_CODE_SESSION_ID=7f3c9a2e-41d8-4b6e-9b1a-2c5d8e0f4a11\0API_TOKEN=secret\0\0"));
+
+    [Fact]
+    public void EmptySessionIdIsNoSession() =>
+        Assert.Null(ProcessEnvironment.Parse(["CLAUDECODE=1", "CLAUDE_CODE_SESSION_ID="]).SessionId);
+
+    /// <summary>The id alone attributes nothing: the markers keep that role.</summary>
+    [Fact]
+    public void ASessionIdAloneIsNotClaude() =>
+        Assert.False(ProcessEnvironment.Parse(["CLAUDE_CODE_SESSION_ID=s1"]).IsClaude);
+
     [Fact]
     public void EntrypointAloneIsEnough() =>
         Assert.True(ProcessEnvironment.Parse(["CLAUDE_CODE_ENTRYPOINT=claude-vscode"]).IsClaude);

@@ -71,12 +71,11 @@ internal sealed partial class PortsView : StackPanel
             row.Update(port, _model.Failures.TryGetValue(port.Id, out var failure) ? failure : null);
         }
 
-        var orphans = _model.Orphans;
-        var shape = string.Join(',', ports.Select(port => port.Id)) + $"|{orphans.Count}|{_isConfirmingBulkKill}|{Ui.IsDark}";
+        var shape = string.Join(',', ports.Select(port => port.Id)) + $"|{_model.BulkKillTargets}|{_isConfirmingBulkKill}|{Ui.IsDark}";
         if (shape != _shape)
         {
             _shape = shape;
-            Lay(ports, orphans);
+            Lay(ports);
         }
         _list.Visibility = ports.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -87,7 +86,7 @@ internal sealed partial class PortsView : StackPanel
         _message.Visibility = Visibility.Visible;
     }
 
-    private void Lay(IReadOnlyList<ListeningPort> ports, IReadOnlyList<ListeningPort> orphans)
+    private void Lay(IReadOnlyList<ListeningPort> ports)
     {
         _list.Children.Clear();
         if (ports.Count == 0)
@@ -105,9 +104,9 @@ internal sealed partial class PortsView : StackPanel
             }
             _list.Children.Add(_rows[ports[index].Id]);
         }
-        if (orphans.Count > 1)
+        if (_model.OrphanCount > 1)
         {
-            _bulk.Content = _isConfirmingBulkKill ? Confirmation(orphans) : BulkButton(orphans.Count);
+            _bulk.Content = _isConfirmingBulkKill ? Confirmation() : BulkButton(_model.OrphanCount);
             _list.Children.Add(_bulk);
         }
     }
@@ -119,10 +118,10 @@ internal sealed partial class PortsView : StackPanel
     });
 
     /// <summary>A bulk kill takes several processes down at once: it never fires straight off a click.</summary>
-    private StackPanel Confirmation(IReadOnlyList<ListeningPort> orphans)
+    private StackPanel Confirmation()
     {
-        var numbers = string.Join(", ", orphans.Select(port => port.Port));
-        var confirm = Ui.Plain(Ui.Text($"Kill {numbers}", 9.5, Ui.SemiBold, 0.9, Theme.Danger), () =>
+        // Ports by number, then the MCP servers left behind by name, as Claudy's confirmation.
+        var confirm = Ui.Plain(Ui.Text($"Kill {_model.BulkKillTargets}", 9.5, Ui.SemiBold, 0.9, Theme.Danger), () =>
         {
             _isConfirmingBulkKill = false;
             _ = _model.KillAllOrphansAsync();
@@ -133,7 +132,7 @@ internal sealed partial class PortsView : StackPanel
             _isConfirmingBulkKill = false;
             Update();
         });
-        return Ui.Column(4, Ui.Text($"Kill {orphans.Count} processes?", 10, Ui.SemiBold, 0.8), Ui.Row(12, confirm, cancel));
+        return Ui.Column(4, Ui.Text($"Kill {_model.OrphanCount} processes?", 10, Ui.SemiBold, 0.8), Ui.Row(12, confirm, cancel));
     }
 
     private void Kill(PortRow row)

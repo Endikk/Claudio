@@ -6,16 +6,22 @@ namespace Claudio.Core.Services;
 ///
 /// The environment is inherited by every descendant and outlives the session that created it,
 /// so it is the only attribution signal that still holds once the session is gone. A process
-/// environment routinely carries tokens: nothing but the presence flag and the project directory
-/// ever leaves this type, and the raw block is walked in place rather than cut into strings.
+/// environment routinely carries tokens: nothing but the presence flag, the project directory and
+/// the session id ever leaves this type, and the raw block is walked in place rather than cut into
+/// strings.
 /// </summary>
 public static class ProcessEnvironment
 {
-    public sealed record Markers(bool IsClaude, string? ProjectDirectory);
+    /// <param name="SessionId">
+    /// The Claude Code session that launched the process. A session can outlive the parent link to
+    /// its servers, so this id is what says a server still has a live session.
+    /// </param>
+    public sealed record Markers(bool IsClaude, string? ProjectDirectory, string? SessionId = null);
 
     private const string ClaudeCode = "CLAUDECODE";
     private const string Entrypoint = "CLAUDE_CODE_ENTRYPOINT";
     private const string ProjectDirectory = "CLAUDE_PROJECT_DIR";
+    private const string SessionId = "CLAUDE_CODE_SESSION_ID";
 
     /// <summary>Markers from <c>NAME=value</c> entries.</summary>
     public static Markers Parse(IEnumerable<string> entries)
@@ -53,8 +59,9 @@ public static class ProcessEnvironment
     {
         private bool _isClaude;
         private string? _projectDirectory;
+        private string? _sessionId;
 
-        public readonly Markers Result => new(_isClaude, _projectDirectory);
+        public readonly Markers Result => new(_isClaude, _projectDirectory, _sessionId);
 
         public void Read(ReadOnlySpan<char> entry)
         {
@@ -73,6 +80,11 @@ public static class ProcessEnvironment
             {
                 _isClaude = true;
                 _projectDirectory = entry[(equals + 1)..].ToString();
+            }
+            else if (name.Equals(SessionId, StringComparison.OrdinalIgnoreCase) && equals + 1 < entry.Length)
+            {
+                // The id alone does not attribute: the markers above keep that role, as they always had.
+                _sessionId = entry[(equals + 1)..].ToString();
             }
         }
     }

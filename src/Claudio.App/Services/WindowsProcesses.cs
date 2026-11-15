@@ -121,6 +121,55 @@ internal static unsafe partial class WindowsProcesses
     }
 
     /// <summary>
+    /// What <see cref="McpScanner"/> asks about one process. The command lines come with
+    /// <see cref="Table"/>; the environment is <see cref="Markers"/>, read only for the few
+    /// processes that pass the cheap checks.
+    /// </summary>
+    public static ProcessProbe Probe { get; } = new(IsOwnedByUser, ExecutablePath, Markers, ResidentBytes);
+
+    /// <summary>The process runs as the current user; false for anyone else's, or one that cannot be opened.</summary>
+    public static bool IsOwnedByUser(int pid)
+    {
+        if (pid <= LastSystemPid)
+        {
+            return false;
+        }
+        using var process = OpenProcess(ProcessQueryLimitedInformation, 0, (uint)pid);
+        return !process.IsInvalid && IsCurrentUser(process);
+    }
+
+    /// <summary>The full path of the process's image, as Claudy's <c>proc_pidpath</c>; null when it cannot be read.</summary>
+    public static string? ExecutablePath(int pid)
+    {
+        if (pid <= LastSystemPid)
+        {
+            return null;
+        }
+        using var process = OpenProcess(ProcessQueryLimitedInformation, 0, (uint)pid);
+        return process.IsInvalid ? null : ImagePath(process);
+    }
+
+    /// <summary>
+    /// The process's working set, in bytes: the memory it holds in RAM now, shared pages included,
+    /// which is what a Mac's resident size counts and what Task Manager's details list shows as
+    /// "Working set". Null when it cannot be read.
+    /// </summary>
+    public static ulong? ResidentBytes(int pid)
+    {
+        if (pid <= LastSystemPid)
+        {
+            return null;
+        }
+        using var process = OpenProcess(ProcessQueryLimitedInformation | ProcessVmRead, 0, (uint)pid);
+        if (process.IsInvalid)
+        {
+            return null;
+        }
+        var counters = new ProcessMemoryCounters { Size = (uint)sizeof(ProcessMemoryCounters) };
+        return K32GetProcessMemoryInfo(process, &counters, counters.Size) != 0 ? counters.WorkingSetSize : null;
+    }
+
+    /// <summary>
     /// Ends processes for <see cref="PortReaper"/>. The handle opened to terminate a process is
     /// kept until the process is seen gone: while it is held, Windows cannot hand the PID to anyone
     /// else, so the wait that follows watches the very process that was terminated.
@@ -446,6 +495,22 @@ internal static unsafe partial class WindowsProcesses
         public nuint InheritedFromUniqueProcessId;
     }
 
+    /// <summary>PROCESS_MEMORY_COUNTERS.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ProcessMemoryCounters
+    {
+        public uint Size;
+        public uint PageFaultCount;
+        public nuint PeakWorkingSetSize;
+        public nuint WorkingSetSize;
+        public nuint QuotaPeakPagedPoolUsage;
+        public nuint QuotaPagedPoolUsage;
+        public nuint QuotaPeakNonPagedPoolUsage;
+        public nuint QuotaNonPagedPoolUsage;
+        public nuint PagefileUsage;
+        public nuint PeakPagefileUsage;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct UnicodeString
     {
@@ -486,6 +551,9 @@ internal static unsafe partial class WindowsProcesses
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     private static partial uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial int K32GetProcessMemoryInfo(SafeProcessHandle process, ProcessMemoryCounters* counters, uint size);
 
     [LibraryImport("advapi32.dll", SetLastError = true)]
     private static partial int OpenProcessToken(SafeProcessHandle process, uint access, out nint token);
