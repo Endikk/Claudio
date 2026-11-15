@@ -61,6 +61,16 @@ public partial class App : Application
 
     private void Start()
     {
+#if DEBUG
+        // `--room-preview`: the agent room alone, on a made-up scene, and nothing else of Claudio.
+        if (RoomPreviewWindow.IsRequested)
+        {
+            var preview = new RoomPreviewWindow();
+            preview.Closed += (_, _) => Exit();
+            preview.Activate();
+            return;
+        }
+#endif
         var ui = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         var model = new UsageViewModel(ui);
         var updates = new UpdateChecker(ui);

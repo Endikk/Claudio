@@ -62,6 +62,9 @@ file of the same role:
 | `PortsViewModel.swift` | `Claudio.App/ViewModels/PortsViewModel.cs` (its texts in `Claudio.Core/Presentation/PortsText.cs`) |
 | `UpdateChecker.swift` | `Claudio.App/Services/UpdateChecker.cs` (Velopack instead of Homebrew) |
 | `LaunchAtLogin.swift` | `Claudio.App/Services/LaunchAtLogin.cs` (the user's `Run` key) |
+| `Models/RoomPlan.swift`, `RoomScene.swift`, `RoomSky.swift`, `RoomVacuum.swift` | `Claudio.Core/Models/`, same names (points as `RoomPoint`; the clock's time zone is passed in) |
+| `Views/Room/RoomSprites.swift` | `RoomSprite`, `RoomGlyph` in `Claudio.Core/Design/RoomSprites.cs`; the Segoe glyphs and the stamps in `Claudio.App/Views/Room/RoomSprites.cs` |
+| `Views/Room/RoomPainter*.swift`, `RoomCanvas.swift` | `Claudio.App/Views/Room/`, one partial `RoomPainter` (`RoomPainter.Backdrop.cs`, …) on Win2D |
 | `Theme.swift`, `ClaudyTyping`, `ClaudyOverload`, `ClaudyWave`, `CardShadow` | `Claudio.Core/Design/` (from the shared data) |
 | `RootView.swift`, `FloatingPanel.swift` | `Claudio.App/Views/RootView.cs` on `App/FloatingPanel.cs` |
 | `MenuBarView.swift`, `MenuBarController.swift` | `Claudio.App/Views/MenuBarView.cs` in `App/MenuBarPopover.cs`, the icon in `App/MenuBarController.cs` |

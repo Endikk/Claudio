@@ -19,6 +19,10 @@ public static class Program
         VelopackApp.Build().Run();
 
         using var instance = new Mutex(initiallyOwned: true, InstanceName, out var isFirst);
+#if DEBUG
+        // The room's preview opens beside a Claudio already running.
+        isFirst |= RoomPreviewWindow.IsRequested;
+#endif
         if (!isFirst)
         {
             return;
