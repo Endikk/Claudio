@@ -174,7 +174,7 @@ public sealed record UsageSnapshot
     public static UsageSnapshot Placeholder(DateTimeOffset now) => new()
     {
         Session = new UsageWindow { Title = "Session", Window = "5h", WindowStart = now, ResetDate = now, Accent = Accent.Coral, IsMeasured = false },
-        Weekly = new UsageWindow { Title = "Weekly", Window = "7d", WindowStart = now, ResetDate = now, Accent = Accent.Amber, IsMeasured = false },
+        Weekly = new UsageWindow { Title = "Weekly", Window = "7d", WindowStart = now, ResetDate = now, Accent = Accent.Sky, IsMeasured = false },
         Scoped = new UsageWindow { Title = "Per model", Window = "7d", WindowStart = now, ResetDate = now, Accent = Accent.Violet, IsMeasured = false },
         UpdatedAt = now,
     };

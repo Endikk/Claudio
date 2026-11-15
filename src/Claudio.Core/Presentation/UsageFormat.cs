@@ -6,7 +6,7 @@ using Claudio.Core.Services;
 namespace Claudio.Core.Presentation;
 
 /// <summary>A window's distance from its expected pace, ready to display.</summary>
-public sealed record Pace(string Text, Rgba Color);
+public sealed record Pace(string Text, Ink Ink);
 
 /// <summary>
 /// How the card writes figures, dates and the pace: the static helpers of Claudy's
@@ -104,11 +104,11 @@ public static class UsageFormat
         var points = PacePoints(delta);
         if (points < 4)
         {
-            return new Pace("on pace", Theme.Color(Accent.Sage));
+            return new Pace("on pace", Ink.Positive);
         }
         return delta > 0
-            ? new Pace($"{points} pts ahead of pace", delta > 0.20 ? Theme.Danger : Theme.Color(Accent.Amber))
-            : new Pace($"{points} pts behind pace", Theme.Color(Accent.Sage));
+            ? new Pace($"{points} pts ahead of pace", delta > 0.20 ? Ink.Danger : Ink.Amber)
+            : new Pace($"{points} pts behind pace", Ink.Positive);
     }
 
     /// <summary>The pace gap in whole percentage points.</summary>

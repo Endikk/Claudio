@@ -42,19 +42,19 @@ public sealed class UsageFormatTests
     }
 
     [Theory]
-    [InlineData(0.52, "on pace", Accent.Sage)]
-    [InlineData(0.65, "15 pts ahead of pace", Accent.Amber)]
-    [InlineData(0.36, "14 pts behind pace", Accent.Sage)]
-    public void PaceSpellsTheGapOut(double percent, string text, Accent accent)
+    [InlineData(0.52, "on pace", Ink.Positive)]
+    [InlineData(0.65, "15 pts ahead of pace", Ink.Amber)]
+    [InlineData(0.36, "14 pts behind pace", Ink.Positive)]
+    public void PaceSpellsTheGapOut(double percent, string text, Ink ink)
     {
         var pace = UsageFormat.PaceOf(Halfway(percent), Now)!;
         Assert.Equal(text, pace.Text);
-        Assert.Equal(Theme.Color(accent), pace.Color);
+        Assert.Equal(ink, pace.Ink);
     }
 
     [Fact]
     public void FarAheadOfPaceTurnsRed() =>
-        Assert.Equal(Theme.Danger, UsageFormat.PaceOf(Halfway(0.75), Now)!.Color);
+        Assert.Equal(Ink.Danger, UsageFormat.PaceOf(Halfway(0.75), Now)!.Ink);
 
     [Fact]
     public void NoPaceWithoutARunningWindow()

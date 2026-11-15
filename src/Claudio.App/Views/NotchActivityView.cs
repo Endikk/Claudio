@@ -144,7 +144,7 @@ internal sealed partial class NotchActivityView : StackPanel
             _bar.Update(lead.IsMeasured ? lead.Percent : 0, Theme.Tint(lead.Accent, lead.Percent), active ? lead.Elapsed(now) : null);
             if (UsageFormat.PaceOf(lead, now) is { } pace)
             {
-                Ui.Restyle(_pace, pace.Text, 1, pace.Color);
+                Ui.Restyle(_pace, pace.Text, 1, Theme.Color(pace.Ink, Ui.IsDark));
             }
             else
             {

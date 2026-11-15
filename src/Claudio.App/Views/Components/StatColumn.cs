@@ -35,7 +35,7 @@ internal sealed partial class StatColumn : Grid
         Ui.Restyle(_local, window.IsMeasured ? UsageFormat.Tokens(window.TokensUsed) + " here" : "no quota", 0.38);
         if (UsageFormat.PaceSign(window, now) is { } sign && UsageFormat.PaceOf(window, now) is { } pace)
         {
-            Ui.Restyle(_pace, sign, 1, pace.Color);
+            Ui.Restyle(_pace, sign, 1, Theme.Color(pace.Ink, Ui.IsDark));
         }
         else
         {

@@ -100,7 +100,7 @@ public sealed class DemoUsageDataSource
                 TokensUsed = weekTokens,
                 WindowStart = weekStart,
                 ResetDate = weekEnd,
-                Accent = Accent.Amber,
+                Accent = Accent.Sky,
             },
             Scoped = new UsageWindow
             {
@@ -117,7 +117,7 @@ public sealed class DemoUsageDataSource
             [
                 new ModelUsage("opus", "Opus", (long)(weekTokens * 0.54), 0.54, Accent.Coral),
                 new ModelUsage("sonnet", "Sonnet", scopedTokens, 0.29, Accent.Violet),
-                new ModelUsage("haiku", "Haiku", (long)(weekTokens * 0.17), 0.17, Accent.Sky),
+                new ModelUsage("haiku", "Haiku", (long)(weekTokens * 0.17), 0.17, Accent.Teal),
             ],
             Projects =
             [

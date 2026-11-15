@@ -26,7 +26,7 @@ public static class UsageAggregator
         var source = reading?.Source ?? QuotaSource.Unavailable;
 
         var session = SessionGauge(reading?.Session, entries, now, source);
-        var weekly = WeeklyGauge(reading?.Weekly, entries, now, source, "Weekly", Accent.Amber, family: null);
+        var weekly = WeeklyGauge(reading?.Weekly, entries, now, source, "Weekly", Accent.Sky, family: null);
         var scopedName = reading?.Scoped?.Label;
         var scoped = WeeklyGauge(reading?.Scoped, entries, now, source, scopedName ?? "Per model",
                                  ModelName.AccentOf(scopedName ?? string.Empty), scopedName?.ToLowerInvariant());

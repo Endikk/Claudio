@@ -2,7 +2,11 @@ using System.Globalization;
 
 namespace Claudio.Core.Services;
 
-/// <summary>Accent palette: every gauge and model carries one, never a raw colour.</summary>
+/// <summary>
+/// Accent palette: every gauge and model carries one, never a raw colour. One colour per thing
+/// measured, Claude's coral first. Amber names no window: it only warns, so a gauge that turns
+/// amber always means "look".
+/// </summary>
 public enum Accent
 {
     Coral,
@@ -10,6 +14,7 @@ public enum Accent
     Violet,
     Sage,
     Sky,
+    Teal,
 }
 
 /// <summary>
@@ -34,7 +39,7 @@ public static class ModelName
         var lowered = identifier.ToLowerInvariant();
         if (lowered.Contains("opus", StringComparison.Ordinal)) return Accent.Coral;
         if (lowered.Contains("sonnet", StringComparison.Ordinal)) return Accent.Violet;
-        if (lowered.Contains("haiku", StringComparison.Ordinal)) return Accent.Sky;
+        if (lowered.Contains("haiku", StringComparison.Ordinal)) return Accent.Teal;
         return Accent.Sage;
     }
 

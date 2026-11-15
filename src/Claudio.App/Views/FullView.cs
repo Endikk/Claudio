@@ -188,8 +188,8 @@ internal sealed partial class FullView : StackPanel
         if (UsageFormat.PaceOf(lead, now) is { } pace)
         {
             _pace.Visibility = Visibility.Visible;
-            _paceDot.Fill = Ui.Brush(pace.Color);
-            Ui.Restyle(_paceText, pace.Text, 0.9, pace.Color);
+            _paceDot.Fill = Ui.Brush(Theme.Color(pace.Ink, Ui.IsDark));
+            Ui.Restyle(_paceText, pace.Text, 0.9, Theme.Color(pace.Ink, Ui.IsDark));
         }
         else
         {
