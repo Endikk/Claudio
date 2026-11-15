@@ -36,6 +36,8 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="H.NotifyIcon" />
+    <!-- Win2D draws the agent room, as Claudy's Canvas does (RoomPainter, RoomCanvas). -->
+    <PackageReference Include="Microsoft.Graphics.Win2D" />
     <PackageReference Include="Velopack" />
   </ItemGroup>
 

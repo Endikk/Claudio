@@ -19,6 +19,12 @@ bubble is never remembered. `--simulate-notch none` runs Claudio as if no screen
 island, and `--simulate-notch 185x32` gives it a notch of that size, as Claudy's
 `-ClaudySimulateNotch`.
 
+`--room-preview` (Debug builds) opens the agent room alone, in a plain window, on a made-up scene:
+a few agents in each area, one walking in by the door, one on the sofa, Claudy at work. It opens
+beside a Claudio already running. `--room-preview 21.5` lights the room for that hour,
+`--room-weather snow` (clear, overcast, rain, snow) chooses the weather, `--room-quota 0.95` sets
+the session quota, and `--room-snapshot room.png` writes a frame drawn off screen to a file.
+
 ## Build what is released
 
 ```powershell
@@ -51,6 +57,7 @@ or writes the real Credential Manager or `api.log`.
 ```
 src/Claudio.Core/      every rule, no Windows API (tested on any OS)
 ├── Models/            UsageSnapshot and its parts · QuotaModels · AccountModels · Placement · PortModels
+│                      · the agent room: RoomPlan (seats, routes) · RoomScene · RoomSky (hour, weather) · RoomVacuum
 ├── Services/          ClaudeHome · TranscriptScanner · ProjectResolver · UsageAggregator ·
 │                      ClaudeAccountClient · ClaudeCodeCredentials · ClaudeCredentials · ClaudeOAuth ·
 │                      UsageBridge · UsageDataSource · DemoUsageDataSource · AccountLoader ·
@@ -59,7 +66,8 @@ src/Claudio.Core/      every rule, no Windows API (tested on any OS)
 │                      McpScanner · AlertRules · UsageExport · AgentScanner · ProcessIdentity
 ├── ViewModels/        AgentsViewModel (the sessions and their agents, driven by the App)
 ├── Presentation/      UsageFormat (figures, dates, pace) · NotchActivity · PortsText
-└── Design/            Claudy's tokens, Theme, the mascot, CardShadow, NotchShape, the tray icon
+└── Design/            Claudy's tokens, Theme, the mascot, CardShadow, NotchShape, the tray icon,
+                       the room's sprite and screen symbols (RoomSprites)
 src/Claudio.App/       the WinUI 3 app (Windows App SDK, unpackaged, self-contained)
 ├── App/               Program (Velopack first) · FloatingPanel (the glass window) · MenuBarController
 │                      (the icon next to the clock) · MenuBarPopover (the short card above it) ·
@@ -71,7 +79,7 @@ src/Claudio.App/       the WinUI 3 app (Windows App SDK, unpackaged, self-contai
 ├── ViewModels/        UsageViewModel · PortsViewModel
 ├── Theme/             Ui (type, inks, capsules) · Motion (springs) · TransparentBackdrop
 ├── Views/             RootView · FullView · MinimalView · OnboardingView · MenuBarView · PortsView ·
-│                      NotchView · NotchActivityView · Components/
+│                      NotchView · NotchActivityView · Components/ · Room/ (RoomPainter, RoomCanvas, on Win2D)
 └── Assets/            the icon, and Nunito, the rounded face (SIL Open Font License)
 tests/                 xUnit, on Claudio.Core
 claudy/                Design/ and Fixtures/ pulled from Claudy, never edited here
@@ -88,6 +96,19 @@ files untouched within the window and lines that contain no `"usage"`. The first
 history does not hold the card up: the account is read alongside it, and the sign-in card, which
 shows no token count, does not wait for it. The API is polled every 3 minutes with a 60-second
 cache, and the profile is re-read only every 6 hours.
+
+### The agent room
+
+The room is drawn with Win2D (`Microsoft.Graphics.Win2D`), call for call as Claudy draws it with
+SwiftUI's `Canvas`: `RoomPainter` takes the scene's units (480 by 270, two pixels each at 100 %)
+to a `CanvasDrawingSession`. What never moves (floor, walls, furniture, a desk's own furniture) is
+drawn once into bitmaps, the screens' symbols and the signs' words into command lists; the rest
+is drawn thirty times a second, the window's sky and city five times a second into a bitmap of
+their own, what falls in front of them at thirty. Nothing is drawn while the window is hidden or
+minimised. Claudy's SF Symbols are drawn with their Segoe Fluent Icons counterparts
+(`Views/Room/RoomSprites.cs`). The night multiplies the room by a colour and screens the lamps
+over it: SwiftUI's blend modes, which Win2D does with effects (`TintEffect`, `BlendEffect`) on a
+bitmap of the room.
 
 ### Window
 
