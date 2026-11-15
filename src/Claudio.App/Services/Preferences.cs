@@ -50,6 +50,11 @@ internal static class Preferences
         set => Store.Set("update.announced", value);
     }
 
+    /// <summary>Whether a kind of notification is switched on, as Claudy's <c>claudy.notify.&lt;kind&gt;</c>.</summary>
+    public static bool IsNotifying(NotificationKind kind) => Store.Bool($"notify.{kind.RawValue()}", kind.IsOnByDefault());
+
+    public static void SetNotifying(NotificationKind kind, bool isOn) => Store.Set($"notify.{kind.RawValue()}", isOn);
+
     /// <summary>
     /// Claude Code's folder when it is not where Claude Code puts it by default, as Claudy's
     /// <c>claudy.configDir</c>: it wins over <c>CLAUDE_CONFIG_DIR</c>, and isolates completely.

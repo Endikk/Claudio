@@ -28,6 +28,14 @@ public sealed record TranscriptEntry(
     /// repository holds it. Resolved by <see cref="TranscriptScanner.Scan"/> once the whole session is known.
     /// </summary>
     public string Project { get; init; } = Cwd;
+
+    // The four counters Tokens adds up, kept apart for the CSV export, where a spreadsheet prices
+    // each one on its own. Optional, so an entry built by hand elsewhere need not spell them out.
+
+    public long InputTokens { get; init; }
+    public long OutputTokens { get; init; }
+    public long CacheReadTokens { get; init; }
+    public long CacheWriteTokens { get; init; }
 }
 
 /// <summary>The transcripts folder exists but will not be read (permissions, disk).</summary>
@@ -356,7 +364,13 @@ public sealed class TranscriptScanner
             var key = !string.IsNullOrEmpty(messageId) && !string.IsNullOrEmpty(requestId) ? $"{messageId}:{requestId}" : null;
             var sidechain = root.TryGetProperty("isSidechain", out var side) && side.ValueKind == JsonValueKind.True;
             return new TranscriptEntry(date, model, tokens, weight, Text(root, "cwd") ?? string.Empty,
-                                       Text(root, "sessionId") ?? string.Empty, sidechain, key);
+                                       Text(root, "sessionId") ?? string.Empty, sidechain, key)
+            {
+                InputTokens = input,
+                OutputTokens = output,
+                CacheReadTokens = cacheRead,
+                CacheWriteTokens = cacheWrite,
+            };
         }
     }
 

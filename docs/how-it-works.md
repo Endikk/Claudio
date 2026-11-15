@@ -143,6 +143,68 @@ Closing a port refuses whenever closing would be worse than leaving it open: a p
 time changed since the scan (a reused process number), Claudio itself and its ancestors, a running
 Claude. Its children go first, then the process.
 
+### MCP servers left behind
+
+Claude Code runs MCP servers as child processes that talk over their standard input, with no
+port, so the ports list never saw them. When a session ends badly they stay behind with no
+parent, often holding hundreds of megabytes each. The ports tab lists them under the ports, with
+the memory each tree holds (its working set) and the total, and kills them like an orphaned port.
+
+A process is listed when all of this holds:
+
+- it is yours, its command line names an MCP server (`chrome-devtools-mcp`, `mcp-server-fetch`,
+  `@modelcontextprotocol/...`, through `cmd /c npx`, `node.exe` or an npm `.cmd` shim alike), and
+  its program is not an installed app's own (an MSIX package under `WindowsApps`, a per-user
+  `app-1.2.3` install, an Electron app's `resources\app`). `Program Files` alone does not count:
+  Node and Python live there;
+- its parent is gone: no process holds its parent's number, or the one that does started after
+  it, since Windows hands numbers out again;
+- its environment carries Claude Code's markers (`CLAUDECODE`, `CLAUDE_PROJECT_DIR`), and its
+  `CLAUDE_CODE_SESSION_ID`, when it has one, names no open session;
+- no Claude Code process sits above it, and it does not hold a port already listed.
+
+Only processes that pass the cheap checks get their environment read, and nothing but those
+three markers is kept from it. A daemon a plugin keeps on purpose, and the servers it runs
+itself, are not listed while that daemon lives.
+
+A kill goes to the whole tree, deepest first and the server last, then once more to whatever
+still runs, after checking again that the server is the one listed (its start time) and that no
+live Claude Code sits above or below it. Windows has no process group: nothing outside the tree
+the server heads is touched.
+
+### Notifications
+
+Claudio posts a Windows notification when something deserves a look. Each kind has its own
+switch, as in Claudy:
+
+| Kind | When | Default |
+|---|---|---|
+| Session at 80% | The 5-hour session crosses 80 %, once per window | on |
+| Limit before the reset | At the pace so far, the session fills more than ten minutes before it resets; said once per window, from 50 % on | on |
+| Session back | A session window seen full has reset | on |
+| A session waits for you | A session has waited twenty seconds for a permission or an answer; the banner is taken back once it no longer waits | on |
+| An agent falls silent | An agent has said nothing for three minutes | on |
+| An agent is done | An agent seen at work finishes | off |
+
+The first reading after launch only sets the scene: a threshold already crossed then is not
+announced. Windows asks no permission; if notifications are turned off for Claudio in Settings,
+the menu says so and leads there. The demo set never posts anything.
+
+### CSV export
+
+The export writes the last seven days from the local transcripts, one line per hour, project and
+model, in the very columns Claudy writes:
+
+```
+hour,project,model,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,list_price_usd
+2026-11-10T09:00,Claudy,claude-opus-5-5,18204,9310,2210440,86020,4.1200
+```
+
+`list_price_usd` is what those tokens would cost at Anthropic's list prices, not a bill. Hours are
+local, dates Gregorian and numbers written with a point whatever the system's language. A field
+that a spreadsheet would read as a formula is prefixed with `'`. Without Claude Code there is
+nothing to export: the demo set is never written out.
+
 ### Motion
 
 The mascot types while a session runs, on the account or on this PC; explodes once when the

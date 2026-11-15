@@ -87,6 +87,22 @@ public sealed class LocalUsageDataSource
         return UsageAggregator.Snapshot(entries, account, reading, _now(), _zone) with { IsSignedIn = payload.IsSignedIn };
     }
 
+    /// <summary>
+    /// The responses Claude Code recorded on this PC, for the CSV export: local transcripts only,
+    /// since the account's quotas say how full a window is, not what filled it. Through the pass a
+    /// reading uses: an export clicked during a refresh joins the pass under way rather than
+    /// reading the transcripts a second time.
+    /// </summary>
+    /// <exception cref="ClaudeNotInstalledException">No trace of Claude Code: nothing to read, not an idle week.</exception>
+    public async Task<IReadOnlyList<TranscriptEntry>> RecentEntriesAsync()
+    {
+        if (!_isInstalled())
+        {
+            throw new ClaudeNotInstalledException();
+        }
+        return await ReadHistory().ConfigureAwait(false);
+    }
+
     private bool HasReadHistory
     {
         get
@@ -147,6 +163,22 @@ public sealed class AdaptiveUsageDataSource(LocalUsageDataSource local, DemoUsag
         catch (ClaudeNotInstalledException)
         {
             return await demo.FetchAsync(cancel).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// The export never falls back on the demo set: on screen it is labelled as a demo, but a file
+    /// of invented figures would pass for real ones. Without Claude Code there is nothing.
+    /// </summary>
+    public async Task<IReadOnlyList<TranscriptEntry>> RecentEntriesAsync()
+    {
+        try
+        {
+            return await local.RecentEntriesAsync().ConfigureAwait(false);
+        }
+        catch (ClaudeNotInstalledException)
+        {
+            return [];
         }
     }
 }

@@ -58,6 +58,9 @@ file of the same role:
 | `NotchGeometry.swift`, `NotchLayout.swift`, `NotchHover.swift` | `Claudio.Core/Services/`, same names; y counts downwards, and a PC's notch is Claudio's own, at the top centre of the main screen |
 | `NotchShape` (in `NotchView.swift`), `NotchActivity` (in `NotchActivityView.swift`) | `Claudio.Core/Design/NotchShape.cs`, `Claudio.Core/Presentation/NotchActivity.cs` |
 | `PortScanner.swift`, `PortReaper.swift`, `ProcessTable.swift`, `ProcessEnvironment.swift` | `Claudio.Core/Services/`, same names; what Claudy asks `lsof`, `ps` and `sysctl` comes from Win32 in `Claudio.App/Services/WindowsProcesses.cs` |
+| `McpScanner.swift` | `Claudio.Core/Services/McpScanner.cs`; "adopted by launchd" is "its parent is gone", an app bundle an installed app's folder, and the open sessions are handed in |
+| `AlertRules.swift`, `UsageExport.swift` | `Claudio.Core/Services/`, same names |
+| `Notifier.swift` | `Claudio.App/Services/Notifier.cs` (the Windows App SDK's app notifications) |
 | `UsageViewModel.swift` | `Claudio.App/ViewModels/UsageViewModel.cs`, its static formatting in `Claudio.Core/Presentation/UsageFormat.cs` |
 | `PortsViewModel.swift` | `Claudio.App/ViewModels/PortsViewModel.cs` (its texts in `Claudio.Core/Presentation/PortsText.cs`) |
 | `UpdateChecker.swift` | `Claudio.App/Services/UpdateChecker.cs` (Velopack instead of Homebrew) |

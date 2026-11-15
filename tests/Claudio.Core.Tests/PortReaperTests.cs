@@ -170,4 +170,113 @@ public sealed class PortReaperTests
     [InlineData(4)]
     public void RefusesTheSystem(int pid) =>
         Assert.Equal(KillRefusal.ProtectedProcess, Reaper(new FakeSignals(pid)).Kill(Port(pid), Table(Process(pid, 0, "System"))));
+
+    [Fact]
+    public void KillsByPidWithTheSameGuardrails()
+    {
+        var signals = new FakeSignals(OwnPid);
+        Assert.Equal(KillRefusal.ProtectedProcess,
+                     Reaper(signals).Kill(OwnPid, Epoch, Table(Process(OwnPid, arguments: "Claudio.exe"))));
+        Assert.Empty(signals.Terminated);
+    }
+
+    // MCP servers left behind
+
+    private static McpOrphan Server(int pid, double seconds = 0) =>
+        new($"mcp-{pid}", pid, Epoch.AddSeconds(seconds), "chrome-devtools-mcp", null, 0);
+
+    /// <summary>
+    /// <c>cmd.exe /c npx</c> above npx's <c>node</c> above the server's <c>node</c>: the tree an MCP
+    /// server runs as on Windows.
+    /// </summary>
+    private static RunningProcess[] ServerTree(int root = 600, int parent = 1) =>
+    [
+        Process(root, parent, @"C:\WINDOWS\system32\cmd.exe /d /s /c ""npx -y chrome-devtools-mcp@latest"""),
+        Process(root + 1, root, @"""C:\Program Files\nodejs\node.exe"" ""C:\Program Files\nodejs\node_modules\npm\bin\npx-cli.js"" -y chrome-devtools-mcp@latest", 1),
+        Process(root + 2, root + 1, @"""C:\Program Files\nodejs\node.exe"" C:\Users\x\AppData\Local\npm-cache\_npx\1a2b\node_modules\chrome-devtools-mcp\build\src\index.js", 2),
+    ];
+
+    /// <summary>
+    /// The whole tree goes, deepest first and the server last, and nothing outside it: the dead
+    /// session left other processes behind, which share nothing with the row the user clicked.
+    /// </summary>
+    [Fact]
+    public void TerminatesTheServersTreeAndNothingElse()
+    {
+        var signals = new FakeSignals(600, 601, 602, 700);
+        var result = Reaper(signals).Kill(Server(600), Table([.. ServerTree(), Process(700, 300, "node.exe other.js")]));
+        Assert.Null(result);
+        Assert.Equal([602, 601, 600], signals.Terminated);
+        Assert.Contains(700, signals.Alive);
+    }
+
+    [Fact]
+    public void EscalatesTheWholeTree()
+    {
+        var signals = new FakeSignals(600, 601, 602) { Toughness = 2 };
+        Assert.Null(Reaper(signals).Kill(Server(600), Table(ServerTree())));
+        Assert.Equal([602, 601, 600, 602, 601, 600], signals.Terminated);
+    }
+
+    /// <summary>A process of the tree that already exited is not terminated: its PID may be someone else's by now.</summary>
+    [Fact]
+    public void SkipsAMemberAlreadyGone()
+    {
+        var signals = new FakeSignals(600, 602);
+        Assert.Null(Reaper(signals).Kill(Server(600), Table(ServerTree())));
+        Assert.Equal([602, 600], signals.Terminated);
+    }
+
+    [Fact]
+    public void ReportsATreeThatSurvives()
+    {
+        var signals = new FakeSignals(600, 601, 602) { Toughness = int.MaxValue };
+        Assert.Equal(KillRefusal.SurvivedKill, Reaper(signals).Kill(Server(600), Table(ServerTree())));
+    }
+
+    [Fact]
+    public void ReportsAServerTheSystemRefuses()
+    {
+        var signals = new FakeSignals(600, 601, 602) { Refuses = true };
+        Assert.Equal(KillRefusal.SystemRefused, Reaper(signals).Kill(Server(600), Table(ServerTree())));
+    }
+
+    /// <summary>Between the scan and the click, the server may have come under a live session.</summary>
+    [Fact]
+    public void RefusesAServerThatHasALiveClaudeAncestorAgain()
+    {
+        var signals = new FakeSignals(600, 8859);
+        var result = Reaper(signals).Kill(Server(600), Table(
+            [.. ServerTree(parent: 8859), Process(8859, 1, @"C:\Users\x\.local\bin\claude.exe", -60)]));
+        Assert.Equal(KillRefusal.LiveClaudeSession, result);
+        Assert.Empty(signals.Terminated);
+    }
+
+    [Fact]
+    public void RefusesAServerWhoseStartTimeChanged()
+    {
+        var signals = new FakeSignals(600);
+        Assert.Equal(KillRefusal.IdentityChanged, Reaper(signals).Kill(Server(600, seconds: -60), Table(ServerTree())));
+        Assert.Empty(signals.Terminated);
+    }
+
+    [Fact]
+    public void RefusesAServerAboveClaudio()
+    {
+        var signals = new FakeSignals(600, OwnPid);
+        var result = Reaper(signals).Kill(Server(600), Table([.. ServerTree(), Process(OwnPid, 602, "Claudio.exe", 5)]));
+        Assert.Equal(KillRefusal.ProtectedProcess, result);
+        Assert.Empty(signals.Terminated);
+    }
+
+    /// <summary>A server that drives Claude Code holds a live session in its tree: killing the tree would kill that session.</summary>
+    [Fact]
+    public void RefusesATreeThatHoldsALiveClaudeSession()
+    {
+        var signals = new FakeSignals(600, 601, 602, 603);
+        var result = Reaper(signals).Kill(Server(600), Table(
+            [.. ServerTree(), Process(603, 602, @"C:\Users\x\.local\bin\claude.exe -p", 3)]));
+        Assert.Equal(KillRefusal.LiveClaudeSession, result);
+        Assert.Empty(signals.Terminated);
+    }
 }
