@@ -26,11 +26,22 @@ tandis que le détail des tokens vient des transcripts locaux de Claude Code, so
 - **Des chiffres réels, ou aucun.** Les pourcentages viennent de la seule API d'Anthropic. Quand
   elle ne dit rien, les jauges affichent « — » plutôt qu'une estimation. Sur un PC sans Claude Code
   où personne n'est connecté, un jeu d'exemple marqué « demo » montre à quoi ressemble Claudio.
+- **Onglet Sessions.** Toutes les sessions Claude Code ouvertes sur le PC, celles qui attendent
+  ta réponse d'abord, chacune avec les agents qu'elle fait tourner. « Open » ramène au premier
+  plan l'app où elle tourne ; « Interrupt » lui envoie Ctrl+C.
+- **Salle des agents.** Une fenêtre à part : un open space par projet, chaque agent à un bureau
+  dans la zone de son travail, son écran montrant ce qu'il fait (code, tests, build, benchmark,
+  infra…), et qui change de bureau quand son travail change. La ville à la fenêtre s'allume et
+  s'endort avec l'heure.
+- **Notifications.** Session à 80 %, limite atteinte avant la remise à zéro, session revenue, une
+  session qui t'attend, un agent devenu silencieux ou terminé. Un interrupteur chacune.
 - **Onglet Ports.** Liste les ports TCP laissés en écoute par Claude Code, sessions orphelines
-  comprises, et les ferme d'un clic. L'attribution lit les marqueurs Claude hérités dans
-  l'environnement du process : rien d'autre sur le PC n'est listé.
-- **Rien ne sort du PC.** Pas de télémétrie, pas de serveur tiers, aucune conversation lue ni
-  envoyée. Les seules requêtes réseau vont à l'API d'Anthropic.
+  comprises, et les serveurs MCP qu'une session fermée a laissés tourner, et les ferme d'un clic.
+  L'attribution lit les marqueurs Claude hérités dans l'environnement du process : rien d'autre
+  sur le PC n'est listé.
+- **Rien ne sort du PC.** Pas de télémétrie, pas de serveur tiers, aucune conversation envoyée.
+  Le seul texte que Claudio lit de tes conversations est la dernière demande de chaque session
+  ouverte, affichée dans l'onglet Sessions. Les seules requêtes réseau vont à l'API d'Anthropic.
 
 ## Installer
 
@@ -76,8 +87,10 @@ clic droit sur l'un d'eux le déplace.
 |---|---|
 | Glisser la carte | Déplacer le widget |
 | Clic sur la session ou sur la bande minimale | Passer du mode complet au mode minimal |
-| `usage` / `ports` | Basculer entre les quotas et les ports laissés ouverts par Claude |
-| Clic droit | Rafraîchir · Mode · Emplacement (carte, zone de notification, haut de l'écran) · Connexion · Toujours au-dessus · Lancer au démarrage · Quitter |
+| `Usage` / `Ports` / `Sessions` | Basculer entre les quotas, ce que Claude a laissé tourner, et les sessions ouvertes |
+| Clic droit | Rafraîchir · Mode · Emplacement (carte, zone de notification, haut de l'écran) · Notifications · Afficher ou masquer · Salle des agents · Exporter l'usage en CSV · Connexion · Toujours au-dessus · Lancer au démarrage · Quitter |
+| Ctrl+Alt+C, depuis n'importe quelle app | Afficher ou masquer Claudio |
+| Ctrl+Alt+R, depuis n'importe quelle app | Ouvrir ou fermer la salle des agents |
 | Survol de l'îlot en haut de l'écran | Ouvrir la session, son rythme et sa remise à zéro, et les autres quotas |
 | Clic sur l'icône près de l'horloge | Afficher ou masquer la carte, ouvrir la carte courte, ou ouvrir l'îlot |
 | Clic sur l'avatar | Carte du compte |
@@ -92,7 +105,8 @@ Rafraîchit toutes les 3 minutes, et aussitôt au réveil du PC.
 La documentation détaillée est en anglais :
 
 - [How it works](docs/how-it-works.md) — sources des données, invariants des quotas, relais de la
-  status line, marqueur de rythme, l'îlot, mode démo, confidentialité.
+  status line, marqueur de rythme, sessions et agents, salle des agents, notifications, raccourcis,
+  export CSV, serveurs MCP, l'îlot, mode démo, confidentialité.
 - [Development](docs/development.md) — compilation, tests, structure du projet, les contraintes de
   la fenêtre à connaître avant d'y toucher.
 - [Architecture](docs/architecture.md) — comment Claudio suit Claudy, fichier pour fichier.

@@ -2,6 +2,44 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
+## Unreleased
+
+Everything Claudy 1.5.8 and 1.6.0 brought, on Windows.
+
+### Added
+
+- **Sessions tab.** Every Claude Code session open on the PC, read from Claude Code's own
+  session files: the ones waiting for your answer first, in amber, then those at work, then those
+  at rest, each with the agents it runs. A click unfolds a session (its folder, its app, its last
+  prompt), with **Open**, which brings forward the app it runs in (Windows Terminal, VS Code,
+  Cursor, a console…), and **Interrupt**, which sends it Ctrl+C after a confirmation naming it.
+  Each agent has its own Claudy and colour, its track over the last ten minutes, writes in coral,
+  silence called out after three minutes, done for ten minutes with the files it wrote.
+- **Agent room.** A window of its own, opened from the menus, the Sessions tab or Ctrl+Alt+R: one
+  open space per project, every agent at a desk in the area of its work, its screen showing what
+  it does, read from its tool calls; Claudy at the centre desk with the session quota as a ring.
+  The window's sky, sun, moon, city lights and weather follow the PC's clock and the date.
+- **Notifications**, one switch each: session at 80 %, limit before the reset, session back, a
+  session waiting for you, an agent gone silent, an agent done. A click on one about a session
+  opens its app; about an agent, its desk.
+- **Ctrl+Alt+C** shows or hides Claudio from any app; the menus say when another app holds it.
+- **Export usage as CSV…**: the last seven days, one line per hour, project and model, with the
+  list price of those tokens. Local transcripts only, never the demo set.
+- **MCP servers left behind** in the Ports tab, with the memory each one holds, killed as a tree.
+- The short card above the clock and the island list the waiting sessions and the agents; next to
+  the clock, an amber hand and the lead agent's Claudy join the figure.
+
+### Changed
+
+- **The card follows Claudy's new look**: the session in a tile of its own, the weekly windows and
+  the week's curve on the glass apart by hairlines, sentence-case labels, three tones of text,
+  count badges and pill buttons, a warm veil over the glass, no more glows or gradients.
+- One colour per window: coral for the session, sky for the week, violet for Sonnet, teal for
+  Haiku. Amber and red now only warn.
+- The icon sits on a cream tile.
+- The mascot holds still in a hidden window, and next to the clock it types at half pace and is
+  redrawn only when its frame changes.
+
 ## 1.0.3 (7 October 2026)
 
 ### Fixed
