@@ -59,6 +59,38 @@ public sealed class ProcessTable(IReadOnlyDictionary<int, RunningProcess> proces
                                .ToList();
     }
 
+    /// <summary>
+    /// Every process below <paramref name="pid"/>, closest first, each generation by pid, as
+    /// Claudy's <c>descendants(of:)</c>. The Idle process and System have no tree worth walking:
+    /// below them sits the whole machine. A child is one by the same rule as <see cref="Ancestors"/>:
+    /// a process that started before the pid it names as parent belonged to a dead parent, and is
+    /// left out with everything below it.
+    ///
+    /// The <c>seen</c> set is what bounds the walk: a malformed table with a loop in it still ends,
+    /// each process being visited once.
+    /// </summary>
+    public IReadOnlyList<RunningProcess> Descendants(int pid)
+    {
+        if (pid <= LastSystemPid || !Processes.ContainsKey(pid))
+        {
+            return [];
+        }
+        var children = Processes.Values.ToLookup(process => process.Parent);
+
+        var found = new List<RunningProcess>();
+        var seen = new HashSet<int> { pid };
+        List<RunningProcess> level = [Processes[pid]];
+        while (level.Count > 0)
+        {
+            level = level.SelectMany(parent => children[parent.Pid].Where(child => IsParent(parent, child)))
+                         .Where(child => seen.Add(child.Pid))
+                         .OrderBy(child => child.Pid)
+                         .ToList();
+            found.AddRange(level);
+        }
+        return found;
+    }
+
     /// <summary>The live Claude session a process belongs to, when there is one.</summary>
     public RunningProcess? ClaudeSessionRoot(int pid) =>
         Ancestors(pid).FirstOrDefault(process => IsClaudeBinary(process.Arguments));

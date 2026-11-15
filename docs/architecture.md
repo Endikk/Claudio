@@ -61,6 +61,8 @@ file of the same role:
 | `McpScanner.swift` | `Claudio.Core/Services/McpScanner.cs`; "adopted by launchd" is "its parent is gone", an app bundle an installed app's folder, and the open sessions are handed in |
 | `AlertRules.swift`, `UsageExport.swift` | `Claudio.Core/Services/`, same names |
 | `Notifier.swift` | `Claudio.App/Services/Notifier.cs` (the Windows App SDK's app notifications) |
+| `AgentScanner.swift`, `ProcessIdentity.swift`, `ProcessTable+Descendants.swift` | `Claudio.Core/Services/AgentScanner.cs`, `ProcessIdentity.cs` (over `IProcessKernel`), `ProcessTable.Descendants`; what Claudy asks `kill`, `proc_pidinfo` and `NSWorkspace` comes from Win32 in `Claudio.App/Services/WindowsSessions.cs`, and the interrupt is Ctrl+C sent to the session's console |
+| `AgentsViewModel.swift` | `Claudio.Core/ViewModels/AgentsViewModel.cs`, with no UI type: the App drives its passes on its timer and implements `ISessionActions` |
 | `UsageViewModel.swift` | `Claudio.App/ViewModels/UsageViewModel.cs`, its static formatting in `Claudio.Core/Presentation/UsageFormat.cs` |
 | `PortsViewModel.swift` | `Claudio.App/ViewModels/PortsViewModel.cs` (its texts in `Claudio.Core/Presentation/PortsText.cs`) |
 | `UpdateChecker.swift` | `Claudio.App/Services/UpdateChecker.cs` (Velopack instead of Homebrew) |

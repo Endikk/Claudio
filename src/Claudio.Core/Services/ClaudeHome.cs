@@ -37,6 +37,22 @@ public sealed class ClaudeHome
 
     public string ProjectsDirectory => Path.Combine(ConfigDirectory, "projects");
 
+    /// <summary>
+    /// <c>projects</c> under Claude Code's folder, and <c>~/.config/claude/projects</c>, where some
+    /// releases kept their transcripts, as Claudy's <c>projectsDirectories</c>; a redirected
+    /// configuration stands alone.
+    /// </summary>
+    public IReadOnlyList<string> ProjectsDirectories => CustomConfigDirectory is null
+        ? [ProjectsDirectory, Path.Combine(Home, ".config", "claude", "projects")]
+        : [ProjectsDirectory];
+
+    /// <summary>
+    /// <c>sessions\&lt;pid&gt;.json</c>, one per open Claude Code process of this Windows. Sessions
+    /// run inside a WSL distribution write theirs in the distribution's own home, under Linux pids
+    /// Windows cannot check, and are not read.
+    /// </summary>
+    public string SessionsDirectory => Path.Combine(ConfigDirectory, "sessions");
+
     /// <summary>True as soon as any trace of Claude Code exists; without one, demo mode.</summary>
     public bool IsInstalled => File.Exists(ConfigFile) || Directory.Exists(ProjectsDirectory);
 }
