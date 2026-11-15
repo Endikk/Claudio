@@ -14,37 +14,37 @@ internal sealed partial class OnboardingView : StackPanel
 {
     private readonly UsageViewModel _model;
     private readonly SignInControls _signIn;
-    private readonly TextBlock _missing = Ui.Text("Claude Code was not found on this PC: sign in to Claude to read your quotas.", 10, Ui.Medium, 0.48);
+    private readonly TextBlock _missing = Ui.Text("Claude Code was not found on this PC: sign in to Claude to read your quotas.", 11, Ui.Regular, Ui.SecondaryOpacity);
 
     public OnboardingView(UsageViewModel model)
     {
         _model = model;
         _signIn = new SignInControls(model);
         Width = Theme.Metric("fullWidth");
-        Padding = new Thickness(Theme.Metric("padding") + 6, 0, Theme.Metric("padding") + 6, 0);
+        Padding = new Thickness(Theme.Metric("panelPadding"), 0, Theme.Metric("panelPadding"), 0);
         Children.Add(Mark());
 
-        var name = Ui.Text("Claudio", 20, Ui.SemiBold, 0.92);
+        var name = Ui.Text("Claudio", 22, Ui.SemiBold);
         name.HorizontalAlignment = HorizontalAlignment.Center;
         Children.Add(name);
-        var tagline = Ui.Text("Your real Claude quotas.", 11, Ui.Medium, 0.5);
+        var tagline = Ui.Text("Your real Claude quotas", 13, Ui.Regular, Ui.SecondaryOpacity);
         tagline.HorizontalAlignment = HorizontalAlignment.Center;
-        tagline.Margin = new Thickness(0, 3, 0, 0);
+        tagline.Margin = new Thickness(0, 4, 0, 0);
         Children.Add(tagline);
 
-        var features = Ui.Column(13,
-            Feature("\uEC4A", Accent.Coral, "Real quotas", "The same figures as claude.ai, to the minute."),
-            Feature("\uE916", Accent.Amber, "Your pace", "Ahead of or behind each window, at a glance."),
-            Feature("\uEA18", Accent.Sage, "Nothing leaves your PC", "The only exchange is Anthropic's API, with your own token."));
-        features.Margin = new Thickness(0, 20, 0, 20);
+        var features = Ui.Column(14,
+            Feature("\uEC4A", Accent.Coral, "Real quotas", "The same figures as claude.ai, to the minute"),
+            Feature("\uE916", Accent.Sky, "Your pace", "Ahead of or behind each window, at a glance"),
+            Feature("\uEA18", Accent.Teal, "Nothing leaves your PC", "The only exchange is Anthropic's API, with your own token"));
+        features.Margin = new Thickness(12, 22, 12, 22);
         Children.Add(features);
 
         _missing.TextWrapping = TextWrapping.Wrap;
         _missing.TextTrimming = TextTrimming.None;
         _missing.TextAlignment = TextAlignment.Center;
-        _missing.Margin = new Thickness(0, 0, 0, 12);
+        _missing.Margin = new Thickness(6, 0, 6, 12);
         Children.Add(_missing);
-        _signIn.Margin = new Thickness(0, 0, 0, 22);
+        _signIn.Margin = new Thickness(6, 0, 6, 22);
         Children.Add(_signIn);
     }
 
@@ -54,40 +54,24 @@ internal sealed partial class OnboardingView : StackPanel
         _signIn.Update();
     }
 
-    /// <summary>The brand mark: the mascot typing in a soft coral glow.</summary>
-    private static Grid Mark()
+    /// <summary>The brand mark: the mascot typing.</summary>
+    private static MascotView Mark() => new()
     {
-        var coral = Theme.Color(Accent.Coral);
-        var glow = new RadialGradientBrush
-        {
-            MappingMode = BrushMappingMode.Absolute,
-            Center = new Windows.Foundation.Point(37, 37),
-            GradientOrigin = new Windows.Foundation.Point(37, 37),
-            RadiusX = 40,
-            RadiusY = 40,
-        };
-        glow.GradientStops.Add(new GradientStop { Color = Ui.Color(coral, 0.22), Offset = 0.1 });
-        glow.GradientStops.Add(new GradientStop { Color = Ui.Color(coral, 0), Offset = 1 });
-        var mark = new Grid { Width = 74, Height = 74, Margin = new Thickness(0, 28, 0, 14), HorizontalAlignment = HorizontalAlignment.Center };
-        mark.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Fill = glow });
-        mark.Children.Add(new MascotView { Width = 58, Height = 54, IsTyping = true });
-        return mark;
-    }
+        Width = 64,
+        Height = 60,
+        IsTyping = true,
+        Margin = new Thickness(0, 28, 0, 14),
+        HorizontalAlignment = HorizontalAlignment.Center,
+    };
 
     private static Grid Feature(string glyph, Accent accent, string title, string detail)
     {
-        var tint = Theme.Color(accent);
-        var icon = new Border
-        {
-            Width = 26,
-            Height = 26,
-            CornerRadius = new CornerRadius(8),
-            Background = Ui.Brush(tint, 0.14),
-            Child = Ui.Icon(glyph, 12, 1, tint),
-            VerticalAlignment = VerticalAlignment.Top,
-        };
-        var text = Ui.Column(1.5, Ui.Text(title, 11.5, Ui.SemiBold, 0.88), Wrapped(Ui.Text(detail, 10, Ui.Regular, 0.48)));
-        var row = new Grid { ColumnSpacing = 11 };
+        var icon = Ui.Icon(glyph, 15, 1, Theme.Color(accent));
+        icon.Width = 22;
+        icon.VerticalAlignment = VerticalAlignment.Top;
+        icon.Margin = new Thickness(0, 1, 0, 0);
+        var text = Ui.Column(2, Ui.Text(title, 13, Ui.SemiBold), Wrapped(Ui.Text(detail, 12, Ui.Regular, Ui.SecondaryOpacity)));
+        var row = new Grid { ColumnSpacing = 12 };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         Grid.SetColumn(text, 1);

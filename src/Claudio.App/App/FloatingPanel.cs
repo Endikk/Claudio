@@ -15,8 +15,8 @@ using Windows.Graphics;
 namespace Claudio.App;
 
 /// <summary>
-/// A borderless, transparent window holding one of Claudy's glass cards: the rounded glass, its
-/// gradient sheen and coral halo, the hairline, and the drop shadow drawn in a transparent margin
+/// A borderless, transparent window holding one of Claudy's glass cards: the rounded glass under
+/// its warm veil, the hairline, and the drop shadow drawn in a transparent margin
 /// around it (<see cref="CardShadow.Inset"/>). The window follows the card's size and keeps its
 /// bottom-right corner where it was, so the card grows up and to the left, never under the taskbar.
 /// </summary>
@@ -27,8 +27,6 @@ internal partial class FloatingPanel : Window
     private readonly Grid _root = new() { Background = new SolidColorBrush(Colors.Transparent) };
     private readonly Image _shadow = new() { Stretch = Stretch.Fill, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
     private readonly Border _glass = new();
-    private readonly Border _sheen = new();
-    private readonly Border _glow = new();
     private readonly Border _hairline = new() { BorderThickness = new Thickness(1), IsHitTestVisible = false };
     private readonly Border _strain = new() { BorderThickness = new Thickness(1), IsHitTestVisible = false };
     private readonly ContentPresenter _face = new();
@@ -52,7 +50,7 @@ internal partial class FloatingPanel : Window
             Margin = new Thickness(_inset),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
-            Children = { _glass, _sheen, _glow, _face, _hairline, _strain, _overlay },
+            Children = { _glass, _face, _hairline, _strain, _overlay },
         };
         _root.Children.Add(_shadow);
         _root.Children.Add(Card);
@@ -339,44 +337,22 @@ internal partial class FloatingPanel : Window
     }
 
     /// <summary>
-    /// Claudy's glass: a body that follows the wallpaper little, a light sheen from the top-left
-    /// corner, and a coral halo there; then a hairline lit from the same corner.
+    /// Claudy's card surface before Liquid Glass, which Windows does not have: the window material
+    /// under the warm veil, and a hairline at the primary ink's tenth. The body is opaque: without
+    /// Claudy's blur, what lies behind would show through crisp, not frosted.
     /// </summary>
     private void Restyle()
     {
         var corner = new CornerRadius(_corner);
-        foreach (var layer in new[] { _glass, _sheen, _glow, _hairline, _strain })
+        foreach (var layer in new[] { _glass, _hairline, _strain })
         {
             layer.CornerRadius = corner;
         }
         var dark = Ui.IsDark;
-        // Opaque: without Claudy's blur, what lies behind would show through crisp, not frosted.
-        _glass.Background = Ui.Brush(dark ? new Rgba(0x1E, 0x1D, 0x1C) : new Rgba(0xF3, 0xF1, 0xEF));
-
-        var white = new Rgba(255, 255, 255);
-        var sheen = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
-        sheen.GradientStops.Add(new GradientStop { Color = Ui.Color(white, dark ? 0.10 : 0.30), Offset = 0 });
-        sheen.GradientStops.Add(new GradientStop { Color = Ui.Color(white, dark ? 0.015 : 0.06), Offset = 1 });
-        _sheen.Background = sheen;
-
-        var coral = Theme.Color(Accent.Coral);
-        var glow = new RadialGradientBrush
-        {
-            MappingMode = BrushMappingMode.Absolute,
-            Center = new Point(0, 0),
-            GradientOrigin = new Point(0, 0),
-            RadiusX = 240,
-            RadiusY = 240,
-        };
-        glow.GradientStops.Add(new GradientStop { Color = Ui.Color(coral, 0.16), Offset = 0 });
-        glow.GradientStops.Add(new GradientStop { Color = Ui.Color(coral, 0), Offset = 1 });
-        _glow.Background = glow;
-
-        var edge = dark ? white : new Rgba(0, 0, 0);
-        var hairline = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
-        hairline.GradientStops.Add(new GradientStop { Color = Ui.Color(edge, dark ? 0.24 : 0.10), Offset = 0 });
-        hairline.GradientStops.Add(new GradientStop { Color = Ui.Color(edge, dark ? 0.05 : 0.04), Offset = 1 });
-        _hairline.BorderBrush = hairline;
+        // macOS's under-window material, then the veil laid over it.
+        var material = dark ? new Rgba(0x24, 0x22, 0x21) : new Rgba(0xEC, 0xEA, 0xE8);
+        _glass.Background = Ui.Brush(Theme.Veil(dark).Over(material));
+        _hairline.BorderBrush = Ui.Primary(0.1);
         _shadowKey = default;
     }
 

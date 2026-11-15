@@ -4,145 +4,138 @@ using Claudio.Core.Presentation;
 using Claudio.Core.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 
 namespace Claudio.App.Views;
 
 /// <summary>
-/// Full mode, top to bottom, as Claudy's <c>FullView</c>: header, the usage/ports switch, the 5h
-/// session, the weekly and per-model columns, the totals, the sparkline, "Details", and the footer.
-/// On a plan billed on usage, the monthly spend takes the session's place and the two columns,
-/// which have no quota there, step aside.
+/// Full mode, top to bottom, as Claudy's <c>FullView</c>: header, tabs, the 5h session in its own
+/// glass tile, then on the glass itself the weekly and per-model windows, the week's curve with
+/// today's and the week's totals, the details on demand; the footer last. On a plan billed on
+/// usage, the monthly spend takes the session's place and the two windows, which have no quota
+/// there, step aside.
 /// </summary>
 internal sealed partial class FullView : StackPanel
 {
     private readonly UsageViewModel _model;
     private readonly UpdateChecker _updates;
     private readonly PortsViewModel _ports;
+    private readonly Func<(int Agents, int Waiting)> _sessionCounts;
 
-    private readonly MascotView _mascot = new() { Width = 29, Height = 27 };
-    private readonly TextBlock _name = Ui.Text("Claudio", 14, Ui.SemiBold, 0.9);
+    private readonly MascotView _mascot = new() { Width = 32, Height = 30 };
+    private readonly TextBlock _name = Ui.Text("Claudio", 16, Ui.SemiBold);
     private readonly StackPanel _badges = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
     private readonly AvatarButton _avatar;
     private readonly TabSwitcher _tabs;
 
-    private readonly StackPanel _usage = new() { Spacing = 11 };
+    private readonly StackPanel _usage = new();
     private readonly PortsView _portsView;
+    private readonly UIElement _sessionsView;
+    private readonly Action _updateSessions;
 
-    private readonly TextBlock _leadTitle = Ui.Micro(string.Empty, 0.55);
-    // SF Rounded semibold is heavier than Nunito's: the bold weight carries the same mass.
-    private readonly TextBlock _hero = Ui.Text(string.Empty, 40, Ui.Bold);
-    private readonly TextBlock _resetLabel = Ui.Micro(string.Empty, 0.35);
-    private readonly TextBlock _resetValue = Ui.Text(string.Empty, 14, Ui.SemiBold, 0.8);
-    private readonly TextBlock _countdown = Ui.Text(string.Empty, 9.5, Ui.Medium, 0.35);
+    private readonly Border _sessionTile;
+    private readonly Microsoft.UI.Xaml.Shapes.Ellipse _leadDot = new() { Width = 7, Height = 7, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _leadTitle = Ui.SectionLabel(string.Empty);
+    private readonly Figure _hero = new(44);
+    private readonly TextBlock _resetValue = Ui.Text(string.Empty, 13, Ui.SemiBold);
+    private readonly TextBlock _countdown = Ui.Meta(string.Empty);
     private readonly UsageBar _leadBar = new(8);
-    private readonly TextBlock _leadLocal = Ui.Text(string.Empty, 9.5, Ui.Medium, 0.35);
-    private readonly Microsoft.UI.Xaml.Shapes.Ellipse _paceDot = new() { Width = 4, Height = 4 };
-    private readonly TextBlock _paceText = Ui.Text(string.Empty, 9.5, Ui.Medium);
+    private readonly TextBlock _leadLocal = Ui.Meta(string.Empty);
+    private readonly Microsoft.UI.Xaml.Shapes.Ellipse _paceDot = new() { Width = 6, Height = 6, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _paceText = Ui.Text(string.Empty, 11, Ui.SemiBold);
     private readonly StackPanel _pace;
 
-    private readonly Grid _columns = new() { ColumnSpacing = 9 };
+    private readonly Grid _columns = new() { ColumnSpacing = 14 };
+    private readonly Border _columnsRule = Ui.Rule(isVertical: true);
+    private readonly Border _columnsHairline = Ui.Rule();
     private readonly StatColumn _weekly = new();
     private readonly StatColumn _scoped = new();
 
-    private readonly TextBlock _todayTitle = Ui.Micro("Today", 0.4);
-    private readonly TextBlock _todayValue = Ui.Text(string.Empty, 15, Ui.SemiBold);
-    private readonly TextBlock _weekTitle = Ui.Micro("7 days", 0.4);
-    private readonly TextBlock _weekValue = Ui.Text(string.Empty, 15, Ui.SemiBold);
-    private readonly Border _totalsRule = new() { Width = 1, Height = 26 };
-
     private readonly SparklineChart _chart = new("Usage · 7 days");
-    private readonly DetailsSection _details;
+    private readonly Border _detailsHairline = Ui.Rule();
+    private readonly DetailsSection _details = new();
+    private readonly DetailsToggle _detailsToggle;
     private readonly UpdateRow _updateRow;
     private readonly FooterView _footer;
-    private readonly List<Border> _hairlines = [];
 
-    public FullView(UsageViewModel model, UpdateChecker updates, PortsViewModel ports)
+    /// <param name="sessionsView">The Sessions tab, and how to redraw it.</param>
+    /// <param name="sessionCounts">Agents at work and sessions waiting, for the tab's count.</param>
+    public FullView(UsageViewModel model, UpdateChecker updates, PortsViewModel ports,
+                    UIElement sessionsView, Action updateSessions, Func<(int Agents, int Waiting)> sessionCounts)
     {
         _model = model;
         _updates = updates;
         _ports = ports;
-        Spacing = 11;
-        Padding = new Thickness(Theme.Metric("padding"), 14, Theme.Metric("padding"), 14);
+        _sessionsView = sessionsView;
+        _updateSessions = updateSessions;
+        _sessionCounts = sessionCounts;
+        var gap = Theme.Metric("gap");
+        Spacing = gap;
+        Padding = new Thickness(Theme.Metric("panelPadding"));
         Width = Theme.Metric("fullWidth");
+        _usage.Spacing = gap;
 
         _avatar = new AvatarButton(model.ToggleProfile);
         _tabs = new TabSwitcher(tab => model.Tab = tab);
-        _details = new DetailsSection(model.ToggleDetails);
+        _detailsToggle = new DetailsToggle(model.ToggleDetails);
         _updateRow = new UpdateRow(updates);
         _footer = new FooterView(() => _ = model.RefreshAsync(userInitiated: true));
         _portsView = new PortsView(ports);
 
         // Header: the mascot, the name, what is going on, and the account.
-        var title = Ui.Row(8, _mascot, _name, _badges);
         _name.VerticalAlignment = VerticalAlignment.Center;
+        var title = Ui.Row(8, _mascot, _name, _badges);
         var header = Ui.Spread(title, _avatar);
+        header.Height = 34;
+        header.Margin = new Thickness(4, 0, 4, 0);
         header.Background = Ui.Primary(0);
         Ui.OnTap(header, model.ToggleMode, "Minimal mode");
         Children.Add(header);
         Children.Add(_tabs);
 
-        // The lead gauge: the 5h session, or the month's spend.
-        var figure = _hero;
-        var reset = Ui.Column(1, _resetLabel, _resetValue, _countdown);
-        foreach (var line in reset.Children.OfType<FrameworkElement>())
-        {
-            line.HorizontalAlignment = HorizontalAlignment.Right;
-        }
-        reset.Margin = new Thickness(0, 12, 0, 0);
-        var leadTop = Ui.Spread(Ui.Column(0, _leadTitle, figure), reset, VerticalAlignment.Top);
-        _pace = Ui.Row(3, _paceDot, _paceText);
-        var leadBottom = Ui.Spread(_leadLocal, _pace);
-        var session = Ui.Column(9, leadTop, _leadBar, leadBottom);
-        session.Background = Ui.Primary(0);
-        Ui.Tooltip(session, "Click for minimal mode");
-        Ui.OnTap(session, model.ToggleMode, "Minimal mode");
-        _usage.Children.Add(session);
+        // One block only, the lead window: the figure people come for. The two weekly windows and
+        // the week's curve lie on the glass itself, apart by a hairline, so the card does not read
+        // as boxes stacked on boxes.
+        var titleRow = Ui.Row(6, _leadDot, _leadTitle);
+        var figure = Ui.Column(2, titleRow, _hero);
+        _resetValue.HorizontalAlignment = HorizontalAlignment.Right;
+        _countdown.HorizontalAlignment = HorizontalAlignment.Right;
+        var reset = Ui.Column(2, _resetValue, _countdown);
+        reset.Margin = new Thickness(0, 0, 0, 8);
+        var top = Ui.Spread(figure, reset, VerticalAlignment.Bottom, minimumGap: 8);
+        _pace = Ui.Row(4, _paceDot, _paceText);
+        var bottom = Ui.Spread(_leadLocal, _pace, minimumGap: 6);
+        _sessionTile = Ui.Tile(Ui.Column(10, top, _leadBar, bottom));
+        Ui.Tooltip(_sessionTile, "Click for minimal mode");
+        Ui.OnTap(_sessionTile, model.ToggleMode, "Minimal mode");
+        _usage.Children.Add(_sessionTile);
 
         _columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        _columns.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        Grid.SetColumn(_scoped, 1);
+        _columnsRule.Margin = new Thickness(0);
+        Grid.SetColumn(_columnsRule, 1);
+        Grid.SetColumn(_scoped, 2);
         _columns.Children.Add(_weekly);
+        _columns.Children.Add(_columnsRule);
         _columns.Children.Add(_scoped);
+        _columns.Padding = new Thickness(8, 8, 8, 4);
         _usage.Children.Add(_columns);
+        _usage.Children.Add(_columnsHairline);
 
-        var totals = new Grid();
-        totals.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        totals.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        totals.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var today = Total(_todayTitle, _todayValue);
-        var week = Total(_weekTitle, _weekValue);
-        Grid.SetColumn(_totalsRule, 1);
-        Grid.SetColumn(week, 2);
-        totals.Children.Add(today);
-        totals.Children.Add(_totalsRule);
-        totals.Children.Add(week);
-        _usage.Children.Add(totals);
-
-        _usage.Children.Add(Hairline());
+        _chart.Margin = new Thickness(8, 6, 8, 6);
         _usage.Children.Add(_chart);
-        _usage.Children.Add(Hairline());
+        _usage.Children.Add(_detailsHairline);
+        _details.Margin = new Thickness(8, 6, 8, 6);
         _usage.Children.Add(_details);
-        _usage.Children.Add(Hairline());
         _usage.Children.Add(_updateRow);
-        _usage.Children.Add(_footer);
+
+        var footerRow = Ui.Spread(_detailsToggle, _footer, minimumGap: 8);
+        footerRow.Margin = new Thickness(6, 0, 2, 0);
+        _usage.Children.Add(footerRow);
 
         Children.Add(_usage);
         Children.Add(_portsView);
-    }
-
-    private static StackPanel Total(TextBlock title, TextBlock value)
-    {
-        title.HorizontalAlignment = HorizontalAlignment.Center;
-        value.HorizontalAlignment = HorizontalAlignment.Center;
-        return Ui.Column(2, title, value);
-    }
-
-    private Border Hairline()
-    {
-        var line = Ui.Hairline();
-        _hairlines.Add(line);
-        return line;
+        Children.Add(_sessionsView);
     }
 
     public void Update()
@@ -157,63 +150,81 @@ internal sealed partial class FullView : StackPanel
         // The header's mascot keeps its coral; only the wave takes the gauge's band.
         _mascot.Tint = _mascot.IsWaving ? tint : Theme.Color(Accent.Coral);
         _mascot.IsTyping = snapshot.Session.IsRunning(now);
-        _name.Foreground = Ui.Primary(0.9);
+        _name.Foreground = Ui.Primary(1);
         UpdateBadges(snapshot, now);
         _avatar.Update(snapshot.Account, _model.IsProfileVisible);
-        _tabs.Update(_model.Tab, _ports.OrphanCount);
+        var (agents, waiting) = _sessionCounts();
+        _tabs.Update(_model.Tab, _ports.OrphanCount, agents, waiting);
 
-        var onUsage = _model.Tab == CardTab.Usage;
-        _usage.Visibility = onUsage ? Visibility.Visible : Visibility.Collapsed;
-        _portsView.Visibility = onUsage ? Visibility.Collapsed : Visibility.Visible;
-        if (!onUsage)
+        _usage.Visibility = _model.Tab == CardTab.Usage ? Visibility.Visible : Visibility.Collapsed;
+        _portsView.Visibility = _model.Tab == CardTab.Ports ? Visibility.Visible : Visibility.Collapsed;
+        _sessionsView.Visibility = _model.Tab == CardTab.Sessions ? Visibility.Visible : Visibility.Collapsed;
+        switch (_model.Tab)
         {
-            _portsView.Update();
-            return;
+            case CardTab.Ports:
+                _portsView.Update();
+                return;
+            case CardTab.Sessions:
+                _updateSessions();
+                return;
+            default:
+                break;
         }
 
-        Ui.Restyle(_leadTitle, $"{lead.Title} · {lead.Window}".ToUpperInvariant(), 0.55);
-        // The figure fades downward, primary to 72 %, as Claudy's hero gradient.
-        var heroInk = new LinearGradientBrush { StartPoint = new Windows.Foundation.Point(0.5, 0), EndPoint = new Windows.Foundation.Point(0.5, 1) };
-        heroInk.GradientStops.Add(new GradientStop { Color = Ui.Color(Ui.PrimaryInk, lead.IsMeasured ? 1 : 0.4), Offset = 0.2 });
-        heroInk.GradientStops.Add(new GradientStop { Color = Ui.Color(Ui.PrimaryInk, lead.IsMeasured ? 0.72 : 0.28), Offset = 0.9 });
-        Ui.Figure(_hero, UsageFormat.Percent(lead), heroInk, lead.IsMeasured, 17, Ui.Primary(0.38), Ui.Medium);
+        Ui.RestyleTile(_sessionTile, tint, 0.18);
+        _leadDot.Fill = Ui.Brush(tint);
+        Ui.Restyle(_leadTitle, $"{lead.Title} · {lead.Window}", Ui.SecondaryOpacity);
+        _hero.Update(lead);
 
         var active = lead.IsActive(now);
-        Ui.Restyle(_resetLabel, (active ? "reset" : lead.IsMeasured ? "session" : "quota").ToUpperInvariant(), 0.35);
-        Ui.Restyle(_resetValue, active ? UsageFormat.ResetTime(lead.ResetDate, now) : lead.IsMeasured ? "inactive" : "unavailable", 0.8);
-        Ui.Restyle(_countdown, active ? $"in {UsageFormat.Countdown(lead.ResetDate, now)}" : string.Empty, 0.35);
+        Ui.Restyle(_resetValue, active ? $"Resets {UsageFormat.ResetTime(lead.ResetDate, now)}" : lead.IsMeasured ? "Session inactive" : "Quota unavailable", 1);
+        Ui.Restyle(_countdown, active ? $"in {UsageFormat.Countdown(lead.ResetDate, now)}" : string.Empty, Ui.SecondaryOpacity);
         _countdown.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
         _leadBar.Update(lead.Percent, tint, active ? lead.Elapsed(now) : null);
-        Ui.Restyle(_leadLocal, lead.Amount is { } spend ? UsageFormat.Spent(spend) : $"{UsageFormat.Tokens(lead.TokensUsed)} tokens on this machine", 0.35);
+        Ui.Restyle(_leadLocal, lead.Amount is { } spend ? UsageFormat.Spent(spend) : $"{UsageFormat.Tokens(lead.TokensUsed)} tokens on this machine", Ui.SecondaryOpacity);
         if (UsageFormat.PaceOf(lead, now) is { } pace)
         {
             _pace.Visibility = Visibility.Visible;
-            _paceDot.Fill = Ui.Brush(Theme.Color(pace.Ink, Ui.IsDark));
-            Ui.Restyle(_paceText, pace.Text, 0.9, Theme.Color(pace.Ink, Ui.IsDark));
+            _paceDot.Fill = Ui.Brush(Theme.Color(pace.Ink, isDark: true));
+            Ui.Restyle(_paceText, ShortPace(pace.Text), 1, Ui.Ink(pace.Ink));
         }
         else
         {
             _pace.Visibility = Visibility.Collapsed;
         }
 
-        _columns.Visibility = snapshot.Spend is null ? Visibility.Visible : Visibility.Collapsed;
+        var hasWindows = snapshot.Spend is null;
+        _columns.Visibility = hasWindows ? Visibility.Visible : Visibility.Collapsed;
+        _columnsHairline.Visibility = _columns.Visibility;
         _weekly.Update(snapshot.Weekly, now);
         _scoped.Update(snapshot.Scoped, now);
-
-        _todayTitle.Foreground = Ui.Primary(0.4);
-        _weekTitle.Foreground = Ui.Primary(0.4);
-        Ui.Restyle(_todayValue, UsageFormat.Tokens(snapshot.TodayTokens), 0.95, Theme.Color(Accent.Coral));
-        Ui.Restyle(_weekValue, UsageFormat.Tokens(snapshot.WeekTokens), 0.95, Theme.Color(Accent.Sky));
-        _totalsRule.Background = Ui.Primary(0.08);
-        foreach (var line in _hairlines)
+        foreach (var rule in new[] { _columnsRule, _columnsHairline, _detailsHairline })
         {
-            line.Background = Ui.Primary(0.07);
+            rule.Background = Ui.Primary(0.1);
         }
 
-        _chart.Update(snapshot.History, Theme.Color(Accent.Coral));
-        _details.Update(snapshot, _model.IsDetailsExpanded);
+        _chart.Update(snapshot.History, Theme.Color(Accent.Coral), snapshot.TodayTokens, snapshot.WeekTokens);
+        var expanded = _model.IsDetailsExpanded;
+        _detailsHairline.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        _details.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        if (expanded)
+        {
+            _details.Update(snapshot);
+        }
+        _detailsToggle.Update(expanded);
         _updateRow.Update();
         _footer.Update(snapshot.SessionCount, snapshot.UpdatedAt, _model.IsRefreshing);
+    }
+
+    /// <summary>
+    /// "27 pts ahead of pace" next to the token count pushed it to an ellipsis: the tile says
+    /// "27 pts ahead", as the weekly columns do.
+    /// </summary>
+    private static string ShortPace(string text)
+    {
+        var shorter = text.Replace(" of pace", string.Empty, StringComparison.Ordinal)
+                          .Replace("behind pace", "behind", StringComparison.Ordinal);
+        return shorter.Length == 0 ? shorter : char.ToUpperInvariant(shorter[0]) + shorter[1..];
     }
 
     private void UpdateBadges(UsageSnapshot snapshot, DateTimeOffset now)
@@ -227,19 +238,23 @@ internal sealed partial class FullView : StackPanel
         }
         if (snapshot.ActiveModel.Length > 0)
         {
-            _badges.Children.Add(Ui.Pill(snapshot.ActiveModel, null));
+            var model = Ui.Text(snapshot.ActiveModel, 12, Ui.Medium, Ui.SecondaryOpacity);
+            model.VerticalAlignment = VerticalAlignment.Center;
+            _badges.Children.Add(model);
         }
         if (snapshot.QuotaSource.Badge is { } badge)
         {
-            var pill = Ui.Pill(badge, Theme.Color(Accent.Amber));
-            Ui.Tooltip(pill, UsageFormat.SourceExplanation(snapshot.QuotaSource, now));
-            _badges.Children.Add(pill);
+            var label = Ui.Text(char.ToUpperInvariant(badge[0]) + badge[1..], 12, Ui.SemiBold, 1, Ui.Ink(Ink.Amber));
+            label.VerticalAlignment = VerticalAlignment.Center;
+            Ui.Tooltip(label, UsageFormat.SourceExplanation(snapshot.QuotaSource, now));
+            _badges.Children.Add(label);
         }
         if (_model.ErrorMessage is { } message)
         {
-            var pill = Ui.Pill("error", Theme.Danger);
-            Ui.Tooltip(pill, message);
-            _badges.Children.Add(pill);
+            var label = Ui.Text("Error", 12, Ui.SemiBold, 1, Ui.Ink(Ink.Danger));
+            label.VerticalAlignment = VerticalAlignment.Center;
+            Ui.Tooltip(label, message);
+            _badges.Children.Add(label);
         }
     }
 }

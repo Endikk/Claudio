@@ -86,6 +86,173 @@ internal static class Ui
         block.TextLineBounds = TextLineBounds.Full;
     }
 
+    /// <summary>SwiftUI's <c>.secondary</c> and <c>.tertiary</c>: with the primary ink, the three tones text takes.</summary>
+    public const double SecondaryOpacity = 0.55;
+    public const double TertiaryOpacity = 0.3;
+
+    public static SolidColorBrush Secondary => Primary(SecondaryOpacity);
+
+    public static SolidColorBrush Tertiary => Primary(TertiaryOpacity);
+
+    /// <summary>Claudy's <c>Theme.Font.mono</c>: ports, commands, file names, what a developer types.</summary>
+    public static FontFamily Mono { get; } = new("Cascadia Mono, Consolas");
+
+    /// <summary>An accent as text, readable on light and dark glass alike: Claudy's <c>.ink(_:)</c>.</summary>
+    public static Rgba Ink(Ink ink) => Theme.Color(ink, IsDark);
+
+    /// <summary>Claudy's <c>sectionLabel</c>: section titles and column headers, in sentence case.</summary>
+    public static TextBlock SectionLabel(string text) => Text(text, 11, FontWeights.Medium, SecondaryOpacity);
+
+    /// <summary>Claudy's <c>meta</c>: counts, times and captions under a figure.</summary>
+    public static TextBlock Meta(string text) => Text(text, 11, FontWeights.Normal, SecondaryOpacity);
+
+    /// <summary>Text in the monospaced face.</summary>
+    public static TextBlock MonoText(string text, double size, FontWeight weight, double opacity = 1, Rgba? colour = null)
+    {
+        var block = Text(text, size, weight, opacity, colour);
+        block.FontFamily = Mono;
+        return block;
+    }
+
+    /// <summary>
+    /// One block of the card, Claudy's <c>tile</c>: glass washed with the colour of what it shows.
+    /// Windows has no Liquid Glass; this is Claudy's own fallback before macOS 26, a quiet fill and a
+    /// hairline under the wash. <see cref="RestyleTile"/> follows the theme.
+    /// </summary>
+    public static Border Tile(UIElement child, Rgba? tint = null, double strength = 0.16, double? padding = null)
+    {
+        var tile = new Border
+        {
+            Child = child,
+            Padding = new Thickness(padding ?? Theme.Metric("tilePadding")),
+            CornerRadius = new CornerRadius(Theme.Metric("tileCorner")),
+            BorderThickness = new Thickness(1),
+        };
+        RestyleTile(tile, tint, strength);
+        return tile;
+    }
+
+    public static void RestyleTile(Border tile, Rgba? tint, double strength = 0.16)
+    {
+        // A tint reads weaker on dark glass: half as much again there.
+        var wash = tint is { } colour
+            ? colour with { A = (byte)Math.Round(255 * Math.Clamp(strength * (IsDark ? 1.5 : 1), 0, 1)) }
+            : new Rgba(0, 0, 0, (byte)(IsDark ? 31 : 0));
+        tile.Background = new SolidColorBrush(Color(wash.Over(PrimaryInk with { A = 13 })));
+        tile.BorderBrush = Primary(0.08);
+    }
+
+    /// <summary>Claudy's <c>CountBadge</c>: a count in a small capsule washed with its colour, its symbol inside.</summary>
+    public static Border CountBadge(int value, Ink ink, bool showsHand = false)
+    {
+        var colour = Ink(ink);
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 3, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        if (showsHand)
+        {
+            row.Children.Add(Hand(9, colour));
+        }
+        row.Children.Add(Text(value.ToString(System.Globalization.CultureInfo.CurrentCulture), 11, FontWeights.SemiBold, 1, colour));
+        return Capsule(new Border
+        {
+            Child = row,
+            Padding = new Thickness(6, 0, 6, 0),
+            MinWidth = 18,
+            Height = 18,
+            Background = Brush(Theme.Color(ink, isDark: true), IsDark ? 0.22 : 0.16),
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+    }
+
+    /// <summary>
+    /// Claudy's <c>PillButtonStyle</c>: a capsule button. Prominent, it is filled with its tint and
+    /// lettered in dark ink; quiet, the tint only washes it.
+    /// </summary>
+    public static Button PillButton(string title, Action action, Rgba? tint = null, bool isProminent = true, bool isLarge = false, string? glyph = null)
+    {
+        var colour = tint ?? Theme.Color(Accent.Coral);
+        var ink = isProminent ? Theme.OnAccent : colour;
+        var label = Text(title, isLarge ? 14 : 12, FontWeights.SemiBold, 1, ink);
+        UIElement content = glyph is null ? label : Row(5, Icon(glyph, isLarge ? 13 : 11, 1, ink), label);
+        var height = isLarge ? 38 : 26;
+        var button = new Button
+        {
+            Content = content,
+            Padding = new Thickness(isLarge ? 16 : 12, 0, isLarge ? 16 : 12, 0),
+            MinHeight = height,
+            Height = height,
+            MinWidth = 0,
+            Background = isProminent ? Brush(colour) : Brush(colour, 0.16),
+            BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(height / 2.0),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        button.Resources["ButtonBackgroundPointerOver"] = isProminent ? Brush(colour, 0.9) : Brush(colour, 0.22);
+        button.Resources["ButtonBackgroundPressed"] = isProminent ? Brush(colour, 0.8) : Brush(colour, 0.28);
+        button.Resources["ButtonBackgroundDisabled"] = Brush(colour, isProminent ? 0.45 : 0.07);
+        button.Resources["ButtonForegroundPointerOver"] = Brush(ink);
+        button.Resources["ButtonForegroundPressed"] = Brush(ink);
+        foreach (var key in new[] { "ButtonBorderBrushPointerOver", "ButtonBorderBrushPressed", "ButtonBorderBrushDisabled" })
+        {
+            button.Resources[key] = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        }
+        button.Click += (_, _) => action();
+        Name(button, title);
+        return button;
+    }
+
+    /// <summary>
+    /// SF Symbols' <c>hand.raised.fill</c>, which Segoe has no glyph for: an open palm, four fingers
+    /// up and the thumb aside, drawn in a 16-unit box and scaled to <paramref name="size"/>.
+    /// </summary>
+    public static FrameworkElement Hand(double size, Rgba colour)
+    {
+        var shape = new GeometryGroup { FillRule = FillRule.Nonzero };
+        void Rounded(double x, double y, double width, double height, double angle = 0)
+        {
+            var rectangle = new RectangleGeometry { Rect = new Windows.Foundation.Rect(x, y, width, height) };
+            if (angle != 0)
+            {
+                rectangle.Transform = new RotateTransform { Angle = angle, CenterX = x + (width / 2), CenterY = y + height };
+            }
+            shape.Children.Add(rectangle);
+            // Round ends: a disc at each end of the finger.
+            var radius = width / 2;
+            foreach (var centreY in new[] { y + radius, y + height - radius })
+            {
+                var disc = new EllipseGeometry { Center = new Windows.Foundation.Point(x + radius, centreY), RadiusX = radius, RadiusY = radius };
+                if (angle != 0)
+                {
+                    disc.Transform = new RotateTransform { Angle = angle, CenterX = x + (width / 2), CenterY = y + height };
+                }
+                shape.Children.Add(disc);
+            }
+        }
+        Rounded(3.6, 2.4, 2.2, 8);
+        Rounded(6.1, 1.0, 2.2, 9);
+        Rounded(8.6, 1.6, 2.2, 8.5);
+        Rounded(11.0, 3.4, 2.0, 7);
+        Rounded(1.6, 6.6, 2.2, 5.6, -28);
+        shape.Children.Add(new RectangleGeometry { Rect = new Windows.Foundation.Rect(3.6, 7.5, 9.4, 4) });
+        shape.Children.Add(new EllipseGeometry { Center = new Windows.Foundation.Point(8.3, 11.2), RadiusX = 4.7, RadiusY = 3.9 });
+        var path = new Microsoft.UI.Xaml.Shapes.Path { Data = shape, Fill = Brush(colour), Width = 16, Height = 16, Stretch = Stretch.None };
+        return new Viewbox { Child = new Grid { Width = 16, Height = 16, Children = { path } }, Width = size, Height = size, VerticalAlignment = VerticalAlignment.Center };
+    }
+
+    /// <summary>Claudy's <c>RoundGlass</c>: a small round control, a quiet disc under its symbol.</summary>
+    public static (Button Button, FontIcon Icon) RoundButton(string glyph, Action action, string tooltip, double size = 28)
+    {
+        var icon = Icon(glyph, 11, SecondaryOpacity);
+        var disc = new Border
+        {
+            Child = icon,
+            Width = size,
+            Height = size,
+            CornerRadius = new CornerRadius(size / 2),
+            Background = Primary(0.08),
+        };
+        return (Plain(disc, action, tooltip), icon);
+    }
+
     /// <summary>Claudy's <c>microLabel</c>: quiet uppercase, slightly tracked, for titles and column headers.</summary>
     public static TextBlock Micro(string text, double opacity)
     {
@@ -184,6 +351,18 @@ internal static class Ui
 
     /// <summary>A one-pixel rule between sections.</summary>
     public static Border Hairline(double opacity = 0.07) => new() { Height = 1, Background = Primary(opacity) };
+
+    /// <summary>
+    /// Claudy's <c>Hairline</c>: the thin line that separates two subjects lying on the card's glass,
+    /// where a tile would have been one block too many. Inset by six points along its length.
+    /// </summary>
+    public static Border Rule(bool isVertical = false) => new()
+    {
+        Width = isVertical ? 1 : double.NaN,
+        Height = isVertical ? double.NaN : 1,
+        Background = Primary(0.1),
+        Margin = isVertical ? new Thickness(0, 6, 0, 6) : new Thickness(6, 0, 6, 0),
+    };
 
     /// <summary>Claudy's header pill: the active model, the origin badge, the error.</summary>
     public static Border Pill(string text, Rgba? tint, double size = 9.5, bool stroked = true)

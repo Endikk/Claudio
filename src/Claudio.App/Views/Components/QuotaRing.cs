@@ -16,13 +16,14 @@ namespace Claudio.App.Views;
 /// </summary>
 internal sealed partial class QuotaRing : StackPanel
 {
-    private const double Diameter = 60;
-    private const double LineWidth = 6;
+    private const double Diameter = 64;
+    private const double LineWidth = 7;
 
     private readonly Canvas _canvas = new() { Width = Diameter, Height = Diameter };
-    private readonly TextBlock _value = Ui.Text(string.Empty, 16, Ui.SemiBold);
-    private readonly TextBlock _title = Ui.Micro(string.Empty, 0.55);
-    private readonly TextBlock _when = Ui.Text(string.Empty, 9.5, Ui.Medium, 0.4);
+    private readonly Figure _value = new(19);
+    private readonly Ellipse _dot = new() { Width = 6, Height = 6, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _title = Ui.Text(string.Empty, 11, Ui.SemiBold);
+    private readonly TextBlock _when = Ui.Meta(string.Empty);
     private readonly SpringValue _shown;
     private readonly double _delay;
     private UsageWindow? _window;
@@ -39,10 +40,11 @@ internal sealed partial class QuotaRing : StackPanel
         figure.HorizontalAlignment = HorizontalAlignment.Center;
         figure.VerticalAlignment = VerticalAlignment.Center;
         var face = new Grid { Width = Diameter, Height = Diameter, HorizontalAlignment = HorizontalAlignment.Center, Children = { _canvas, figure } };
-        _title.HorizontalAlignment = HorizontalAlignment.Center;
+        var title = Ui.Row(5, _dot, _title);
+        title.HorizontalAlignment = HorizontalAlignment.Center;
         _when.HorizontalAlignment = HorizontalAlignment.Center;
         Children.Add(face);
-        Children.Add(Ui.Column(1, _title, _when));
+        Children.Add(Ui.Column(2, title, _when));
         _shown = new SpringValue(SpringValue.Gauge, _ => Draw());
     }
 
@@ -51,10 +53,10 @@ internal sealed partial class QuotaRing : StackPanel
         _window = window;
         _tint = Theme.Tint(window.Accent, window.Percent);
         _target = window.IsMeasured ? Math.Clamp(window.Percent, 0, 1) : 0;
-        Ui.Figure(_value, UsageFormat.Percent(window), Ui.Primary(window.IsMeasured ? 0.92 : 0.4), window.IsMeasured,
-                  9, Ui.Primary(0.4), Ui.Medium);
-        Ui.Restyle(_title, $"{window.Title} · {window.Window}".ToUpperInvariant(), 0.55);
-        Ui.Restyle(_when, window.IsActive(now) ? $"in {UsageFormat.Countdown(window.ResetDate, now)}" : (window.IsMeasured ? "inactive" : "unavailable"), 0.4);
+        _value.Update(window);
+        _dot.Fill = Ui.Brush(_tint);
+        Ui.Restyle(_title, window.Title, 1);
+        Ui.Restyle(_when, window.IsActive(now) ? $"in {UsageFormat.Countdown(window.ResetDate, now)}" : (window.IsMeasured ? "Inactive" : "Unavailable"), Ui.SecondaryOpacity);
         Ui.Tooltip(this, window.IsActive(now)
             ? $"{window.Title} · {window.Window}, resets {UsageFormat.ResetTime(window.ResetDate, now)}. The dot marks the time elapsed in the window."
             : $"{window.Title} · {window.Window}");
@@ -88,7 +90,7 @@ internal sealed partial class QuotaRing : StackPanel
         {
             Width = Diameter + LineWidth,
             Height = Diameter + LineWidth,
-            Stroke = Ui.Primary(0.08),
+            Stroke = Ui.Primary(0.12),
             StrokeThickness = LineWidth,
         };
         Canvas.SetLeft(track, -LineWidth / 2);
@@ -122,9 +124,9 @@ internal sealed partial class QuotaRing : StackPanel
         if (_window is { } window && window.IsActive(DateTimeOffset.UtcNow))
         {
             var pace = Point(Centre, Radius, window.Elapsed(DateTimeOffset.UtcNow));
-            var dot = new Ellipse { Width = 4, Height = 4, Fill = Ui.Primary(0.75) };
-            Canvas.SetLeft(dot, pace.X - 2);
-            Canvas.SetTop(dot, pace.Y - 2);
+            var dot = new Ellipse { Width = 5, Height = 5, Fill = Ui.Primary(1) };
+            Canvas.SetLeft(dot, pace.X - 2.5);
+            Canvas.SetTop(dot, pace.Y - 2.5);
             _canvas.Children.Add(dot);
         }
 

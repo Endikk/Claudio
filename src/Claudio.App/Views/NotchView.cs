@@ -38,11 +38,10 @@ internal sealed partial class NotchView : Grid
     private readonly Canvas _canvas = new();
     private readonly Image _shadow = new() { Stretch = Stretch.Fill, IsHitTestVisible = false };
     private readonly Shape _glass = new();
-    private readonly Shape _sheen = new() { IsHitTestVisible = false };
-    private readonly Shape _glow = new() { IsHitTestVisible = false };
+    private readonly Shape _wash = new() { IsHitTestVisible = false };
+    private readonly Shape _waitingRim = new() { StrokeThickness = 1, IsHitTestVisible = false };
     private readonly Shape _shade = new() { IsHitTestVisible = false };
     private readonly Shape _rim = new() { StrokeThickness = 1, IsHitTestVisible = false };
-    private readonly RadialGradientBrush _glowInk;
     private readonly Canvas _clipped = new();
     private readonly CompositionRoundedRectangleGeometry _clip;
     private readonly NotchActivityView _content;
@@ -70,6 +69,9 @@ internal sealed partial class NotchView : Grid
     private (Size Body, double Scale) _shadowKey;
     private ScreenSize _reported;
 
+    /// <summary>A session waits for the user: at rest, the ears warm to amber.</summary>
+    public bool IsWaiting { get; set; }
+
     public NotchView(UsageViewModel model, UpdateChecker updates)
     {
         _model = model;
@@ -79,18 +81,15 @@ internal sealed partial class NotchView : Grid
         Background = new SolidColorBrush(Colors.Transparent);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(this, "Claudio");
 
-        // Claudy's glass: a dark body, a light sheen from the top-left corner and a coral halo there.
-        _glass.Fill = Ui.Brush(new Rgba(0x1E, 0x1D, 0x1C));
+        // Claudy's glass: the window material under the warm veil, as the card's.
+        _glass.Fill = Ui.Brush(Theme.Veil(isDark: true).Over(new Rgba(0x24, 0x22, 0x21)));
         var white = new Rgba(255, 255, 255);
-        var sheen = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
-        sheen.GradientStops.Add(new GradientStop { Color = Ui.Color(white, 0.10), Offset = 0 });
-        sheen.GradientStops.Add(new GradientStop { Color = Ui.Color(white, 0.015), Offset = 1 });
-        _sheen.Fill = sheen;
-        var coral = Theme.Color(Accent.Coral);
-        _glowInk = new RadialGradientBrush { MappingMode = BrushMappingMode.Absolute, RadiusX = 240, RadiusY = 240 };
-        _glowInk.GradientStops.Add(new GradientStop { Color = Ui.Color(coral, 0.16), Offset = 0 });
-        _glowInk.GradientStops.Add(new GradientStop { Color = Ui.Color(coral, 0), Offset = 1 });
-        _glow.Fill = _glowInk;
+        // At rest, a session waiting for the user warms the ears: seen from the corner of the eye,
+        // where the count alone would not be.
+        _wash.Fill = Ui.Brush(Theme.Color(Accent.Amber), 0.2);
+        _waitingRim.Stroke = Ui.Brush(Theme.Color(Accent.Amber), 0.55);
+        _wash.Opacity = 0;
+        _waitingRim.Opacity = 0;
         // The screen's top edge darkens into the glass, so the island melts into the edge it hangs
         // from instead of meeting it along a line.
         var black = new Rgba(0, 0, 0);
@@ -114,7 +113,7 @@ internal sealed partial class NotchView : Grid
         _clipped.Children.Add(_dots);
         _clipped.Children.Add(_flyMascot);
         _clipped.Children.Add(_flyFigure);
-        foreach (var layer in new UIElement[] { _shadow, _glass, _sheen, _glow, _shade, _clipped, _rim })
+        foreach (var layer in new UIElement[] { _shadow, _glass, _wash, _shade, _clipped, _rim, _waitingRim })
         {
             _canvas.Children.Add(layer);
         }
@@ -365,12 +364,14 @@ internal sealed partial class NotchView : Grid
         var left = (width - islandWidth) / 2;
         var rect = new ScreenRect(left, 0, islandWidth, islandHeight);
 
-        foreach (var path in new[] { _glass, _sheen, _glow, _shade, _rim })
+        foreach (var path in new[] { _glass, _wash, _shade, _rim, _waitingRim })
         {
             path.Data = Geometry(rect, radius);
         }
-        _glowInk.Center = new Point(left, 0);
-        _glowInk.GradientOrigin = new Point(left, 0);
+        // The waiting wash and rim warm the ears at rest only: open, the island says it in words.
+        var waits = IsWaiting ? Math.Clamp(1 - (p * 4), 0, 1) : 0;
+        _wash.Opacity = waits;
+        _waitingRim.Opacity = waits;
 
         // The card's shadow, open only: at rest the ears meet the top edge, and a margin round them
         // would take clicks from what lies beside them.

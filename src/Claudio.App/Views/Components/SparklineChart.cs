@@ -11,17 +11,26 @@ using Windows.Foundation;
 namespace Claudio.App.Views;
 
 /// <summary>
-/// Seven days of tokens as a sparkline. No axes and no grid: the shape and the last point are
-/// enough. Hovering a day marks it and puts its figures in the header, next to the title.
+/// Seven days of tokens as a sparkline, as Claudy's <c>SparklineChart</c>. No axes and no grid: the
+/// shape and the last point are enough. The header carries today's and the week's totals; hovering
+/// a day puts its own figures there.
 /// </summary>
 internal sealed partial class SparklineChart : StackPanel
 {
-    private const double PlotHeight = 46;
+    private const double PlotHeight = 64;
 
     private readonly TextBlock _title;
-    private readonly TextBlock _day = Ui.Text(string.Empty, 10.5, Ui.SemiBold, 0.6);
-    private readonly TextBlock _tokens = Ui.Text(string.Empty, 10.5, Ui.SemiBold);
-    private readonly TextBlock _share = Ui.Text(string.Empty, 10.5, Ui.Medium, 0.4);
+    private readonly TextBlock _day = Ui.Meta(string.Empty);
+    private readonly TextBlock _tokens = Ui.Text(string.Empty, 13, Ui.SemiBold);
+    private readonly TextBlock _share = Ui.Meta(string.Empty);
+    private readonly TextBlock _todayLabel = Ui.Meta("Today");
+    private readonly TextBlock _todayValue = Ui.Text(string.Empty, 13, Ui.SemiBold);
+    private readonly TextBlock _weekLabel = Ui.Meta("7 days");
+    private readonly TextBlock _weekValue = Ui.Text(string.Empty, 13, Ui.SemiBold);
+    private readonly Grid _hoverHeader;
+    private readonly Grid _totalsHeader;
+    private long? _today;
+    private long? _week;
     private readonly Canvas _plot = new() { Height = PlotHeight, Background = Ui.Primary(0) };
     private readonly Grid _axis = new();
     private readonly SpringValue _growth;
@@ -31,25 +40,28 @@ internal sealed partial class SparklineChart : StackPanel
 
     public SparklineChart(string title)
     {
-        Spacing = 7;
-        _title = Ui.Micro(title, 0.55);
-        var figures = Ui.Row(6, _day, _tokens, _share);
-        var header = Ui.Spread(_title, figures, VerticalAlignment.Bottom, minimumGap: 4);
-        header.Height = 12;
+        Spacing = 12;
+        _title = Ui.SectionLabel(title);
+        _hoverHeader = Ui.Spread(Ui.Row(6, _day, _tokens), _share, VerticalAlignment.Bottom, minimumGap: 4);
+        _totalsHeader = Ui.Spread(Ui.Row(4, _todayLabel, _todayValue), Ui.Row(4, _weekLabel, _weekValue), VerticalAlignment.Bottom, minimumGap: 8);
+        var header = new Grid { Height = 16, Children = { _title, _hoverHeader, _totalsHeader } };
+        _title.VerticalAlignment = VerticalAlignment.Bottom;
         Children.Add(header);
-        Children.Add(Ui.Column(5, _plot, _axis));
+        Children.Add(Ui.Column(6, _plot, _axis));
         _growth = new SpringValue(SpringValue.Gauge, _ => Draw(), initial: 0);
         _plot.SizeChanged += (_, _) => Draw();
         _plot.PointerMoved += (_, args) => Hover(args.GetCurrentPoint(_plot).Position.X);
         _plot.PointerExited += (_, _) => Hover(null);
     }
 
-    public void Update(IReadOnlyList<TokenSample> samples, Rgba tint)
+    public void Update(IReadOnlyList<TokenSample> samples, Rgba tint, long? today = null, long? week = null)
     {
+        _today = today;
+        _week = week;
         var changed = !samples.Select(sample => sample.Tokens).SequenceEqual(_samples.Select(sample => sample.Tokens));
         _samples = samples;
         _tint = tint;
-        _title.Foreground = Ui.Primary(0.55);
+        _title.Foreground = Ui.Secondary;
         _axis.ColumnDefinitions.Clear();
         _axis.Children.Clear();
         for (var index = 0; index < samples.Count; index++)
@@ -97,14 +109,14 @@ internal sealed partial class SparklineChart : StackPanel
 
         var area = Curve(points, close: true);
         var fill = new LinearGradientBrush { StartPoint = new Point(0.5, 0), EndPoint = new Point(0.5, 1) };
-        fill.GradientStops.Add(new GradientStop { Color = Ui.Color(_tint, 0.38), Offset = 0 });
-        fill.GradientStops.Add(new GradientStop { Color = Ui.Color(_tint, 0.02), Offset = 1 });
+        fill.GradientStops.Add(new GradientStop { Color = Ui.Color(_tint, 0.42), Offset = 0 });
+        fill.GradientStops.Add(new GradientStop { Color = Ui.Color(_tint, 0), Offset = 1 });
         _plot.Children.Add(new Microsoft.UI.Xaml.Shapes.Path { Data = area, Fill = fill });
         _plot.Children.Add(new Microsoft.UI.Xaml.Shapes.Path
         {
             Data = Curve(points, close: false),
             Stroke = Ui.Brush(_tint),
-            StrokeThickness = 1.8,
+            StrokeThickness = 2.5,
             StrokeLineJoin = PenLineJoin.Round,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap = PenLineCap.Round,
@@ -118,35 +130,46 @@ internal sealed partial class SparklineChart : StackPanel
                 X2 = points[hovered].X,
                 Y1 = 0,
                 Y2 = PlotHeight,
-                Stroke = Ui.Primary(0.25),
+                Stroke = Ui.Tertiary,
                 StrokeThickness = 1,
                 StrokeDashArray = [2, 2],
             });
         }
         var marked = _hovered ?? _samples.Count - 1;
-        var dot = new Ellipse { Width = 7, Height = 7, Fill = Ui.Brush(_tint) };
-        Canvas.SetLeft(dot, points[marked].X - 3.5);
-        Canvas.SetTop(dot, points[marked].Y - 3.5);
+        var dot = new Ellipse { Width = 11, Height = 11, Fill = Ui.Brush(_tint), Stroke = Ui.Brush(Ui.White, 0.9), StrokeThickness = 2 };
+        Canvas.SetLeft(dot, points[marked].X - 5.5);
+        Canvas.SetTop(dot, points[marked].Y - 5.5);
         _plot.Children.Add(dot);
 
         for (var index = 0; index < _samples.Count; index++)
         {
-            var initial = Ui.Text(UsageFormat.DayInitial(_samples[index].Date), 8.5, Ui.SemiBold, index == marked ? 0.65 : 0.28);
+            var isMarked = index == marked;
+            var initial = isMarked
+                ? Ui.Text(UsageFormat.DayInitial(_samples[index].Date), 11, Ui.Bold, 1, Ui.Ink(Ink.Coral))
+                : Ui.Text(UsageFormat.DayInitial(_samples[index].Date), 11, Ui.Medium, Ui.SecondaryOpacity);
             initial.HorizontalAlignment = HorizontalAlignment.Center;
             Grid.SetColumn(initial, index);
             _axis.Children.Add(initial);
         }
 
         var total = _samples.Sum(sample => sample.Tokens);
+        // The title, or once the totals are known, the totals themselves: "Today" and "7 days" say
+        // what the curve is, and the title beside them pushed the figures to an ellipsis.
+        _hoverHeader.Visibility = _hovered is null ? Visibility.Collapsed : Visibility.Visible;
+        _totalsHeader.Visibility = _hovered is null && _today is not null && _week is not null ? Visibility.Visible : Visibility.Collapsed;
+        _title.Visibility = _hovered is null && (_today is null || _week is null) ? Visibility.Visible : Visibility.Collapsed;
         if (_hovered is { } day)
         {
-            Ui.Restyle(_day, UsageFormat.DayName(_samples[day].Date, DateTimeOffset.UtcNow), 0.6);
-            Ui.Restyle(_tokens, UsageFormat.Tokens(_samples[day].Tokens), 1, _tint);
-            Ui.Restyle(_share, total > 0 ? $"{Math.Round(_samples[day].Tokens * 100.0 / total).ToString(CultureInfo.CurrentCulture)} % of week" : string.Empty, 0.4);
+            Ui.Restyle(_day, UsageFormat.DayName(_samples[day].Date, DateTimeOffset.UtcNow), Ui.SecondaryOpacity);
+            Ui.Restyle(_tokens, UsageFormat.Tokens(_samples[day].Tokens), 1, Ui.Ink(Ink.Coral));
+            Ui.Restyle(_share, total > 0 ? $"{Math.Round(_samples[day].Tokens * 100.0 / total).ToString(CultureInfo.CurrentCulture)}% of week" : string.Empty, Ui.SecondaryOpacity);
         }
-        else
+        else if (_today is { } today && _week is { } week)
         {
-            _day.Text = _tokens.Text = _share.Text = string.Empty;
+            Ui.Restyle(_todayLabel, "Today", Ui.SecondaryOpacity);
+            Ui.Restyle(_weekLabel, "7 days", Ui.SecondaryOpacity);
+            Ui.Restyle(_todayValue, UsageFormat.Tokens(today), 1, Ui.Ink(Ink.Coral));
+            Ui.Restyle(_weekValue, UsageFormat.Tokens(week), 1, Ui.Ink(Ink.Sky));
         }
     }
 

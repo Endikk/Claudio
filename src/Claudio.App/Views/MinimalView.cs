@@ -6,17 +6,20 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace Claudio.App.Views;
 
-/// <summary>Compact mode: one horizontal strip with the mascot, the lead percentage and its reset time.</summary>
+/// <summary>
+/// Compact mode, as Claudy's <c>MinimalView</c>: one strip, the mark, the 5h window percentage and
+/// the reset time, the gauge underneath.
+/// </summary>
 internal sealed partial class MinimalView : StackPanel
 {
     private readonly UsageViewModel _model;
     private readonly UpdateChecker _updates;
-    private readonly MascotView _mascot = new() { Width = 29, Height = 27 };
-    private readonly TextBlock _figure = Ui.Text(string.Empty, 28, Ui.Bold);
+    private readonly MascotView _mascot = new() { Width = 30, Height = 28 };
+    private readonly Figure _figure = new(28);
     private readonly StackPanel _dots = new() { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-    private readonly TextBlock _resetLabel = Ui.Micro(string.Empty, 0.35);
-    private readonly TextBlock _resetValue = Ui.Text(string.Empty, 12, Ui.Medium, 0.65);
-    private readonly UsageBar _bar = new(3, showsGlow: false);
+    private readonly TextBlock _resetLabel = Ui.Meta(string.Empty);
+    private readonly TextBlock _resetValue = Ui.Text(string.Empty, 13, Ui.SemiBold);
+    private readonly UsageBar _bar = new(5);
 
     public MinimalView(UsageViewModel model, UpdateChecker updates)
     {
@@ -27,8 +30,9 @@ internal sealed partial class MinimalView : StackPanel
         _figure.VerticalAlignment = VerticalAlignment.Center;
         _resetLabel.HorizontalAlignment = HorizontalAlignment.Right;
         _resetValue.HorizontalAlignment = HorizontalAlignment.Right;
-        var strip = Ui.Spread(Ui.Row(9, _mascot, _figure, _dots), Ui.Column(0, _resetLabel, _resetValue), minimumGap: 6);
-        strip.Margin = new Thickness(14, 9, 14, 8);
+        Spacing = 8;
+        Padding = new Thickness(14, 10, 14, 10);
+        var strip = Ui.Spread(Ui.Row(10, _mascot, _figure, _dots), Ui.Column(1, _resetLabel, _resetValue), minimumGap: 6);
         Children.Add(strip);
         Children.Add(_bar);
         Ui.Tooltip(this, "Click for full mode");
@@ -46,8 +50,7 @@ internal sealed partial class MinimalView : StackPanel
         _mascot.IsOverloaded = snapshot.IsOverloaded;
         _mascot.IsWaving = _updates.IsGreeting && !snapshot.IsOverloaded;
         _mascot.IsTyping = snapshot.Session.IsRunning(now);
-        Ui.Figure(_figure, UsageFormat.Percent(lead), Ui.Primary(lead.IsMeasured ? 0.95 : 0.45), lead.IsMeasured,
-                  13, Ui.Primary(0.4), Ui.Medium);
+        _figure.Update(lead);
 
         _dots.Children.Clear();
         if (_updates.Available is not null)
@@ -58,14 +61,14 @@ internal sealed partial class MinimalView : StackPanel
         }
         if (_model.ErrorMessage is { } message)
         {
-            var dot = Ui.Dot(5, Theme.Danger);
+            var dot = Ui.Dot(6, Theme.Danger);
             Ui.Tooltip(dot, message);
             _dots.Children.Add(dot);
         }
 
         var active = lead.IsActive(now);
-        Ui.Restyle(_resetLabel, (active ? "reset" : lead.IsMeasured ? "session" : "quota").ToUpperInvariant(), 0.35);
-        Ui.Restyle(_resetValue, active ? UsageFormat.ResetTime(lead.ResetDate, now) : lead.IsMeasured ? "inactive" : "unavailable", 0.65);
+        Ui.Restyle(_resetLabel, active ? "Resets" : lead.IsMeasured ? "Session" : "Quota", Ui.SecondaryOpacity);
+        Ui.Restyle(_resetValue, active ? UsageFormat.ResetTime(lead.ResetDate, now) : lead.IsMeasured ? "Inactive" : "Unavailable", 1);
         _bar.Update(lead.Percent, tint, active ? lead.Elapsed(now) : null);
     }
 }

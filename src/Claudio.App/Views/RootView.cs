@@ -43,7 +43,7 @@ internal sealed partial class RootView : FloatingPanel
         _quit = quit;
         _onboarding = new OnboardingView(model);
         _minimal = new MinimalView(model, updates);
-        _full = new FullView(model, updates, ports);
+        _full = new FullView(model, updates, ports, new Grid(), () => { }, () => (0, 0));
         Title = "Claudio";
 
         // Any click on the card counts as opening Claudio: the wave has been seen.
@@ -165,8 +165,8 @@ internal sealed partial class RootView : FloatingPanel
         var dim = new Grid { Background = Ui.Brush(new Rgba(0, 0, 0), 0.22) };
         Ui.OnTap(dim, _model.ToggleProfile);
         var popup = new ProfilePopup(_model.Snapshot.Account, _model.IsSignedIn ? _model.SignOut : null, _model.ToggleProfile);
-        // Claudy's `.shadow(color: .black.opacity(0.35), radius: 22, y: 10)` under the account card.
-        var lifted = Views.OutlineShadow.Wrap(popup, 16, new Rgba(0, 0, 0, (byte)Math.Round(255 * 0.35)), 22, 10);
+        // Claudy's `.shadow(color: .black.opacity(0.25), radius: 16, y: 8)` under the account card.
+        var lifted = Views.OutlineShadow.Wrap(popup, 20, new Rgba(0, 0, 0, (byte)Math.Round(255 * 0.25)), 16, 8);
         lifted.HorizontalAlignment = HorizontalAlignment.Right;
         lifted.VerticalAlignment = VerticalAlignment.Top;
         lifted.Margin = new Thickness(0, 42, 12, 0);

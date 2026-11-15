@@ -32,10 +32,31 @@ public sealed partial class MascotView : Canvas
         // Decoration: assistive technologies skip it, as Claudy hides its mascot from VoiceOver.
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAccessibilityView(this, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
         _timer.Tick += (_, _) => Advance();
-        Loaded += (_, _) => Restart();
-        Unloaded += (_, _) => _timer.Stop();
+        Loaded += (_, _) =>
+        {
+            // Nobody sees a window that is hidden: the mascot holds still there, as Claudy's does.
+            if (XamlRoot is { } root)
+            {
+                root.Changed -= HostChanged;
+                root.Changed += HostChanged;
+            }
+            Restart();
+        };
+        Unloaded += (_, _) =>
+        {
+            _timer.Stop();
+            if (XamlRoot is { } root)
+            {
+                root.Changed -= HostChanged;
+            }
+        };
         SizeChanged += (_, _) => Draw();
     }
+
+    /// <summary>Claudy's <c>ClaudyTyping.aspectRatio</c>: the sprite's width over its height.</summary>
+    public static double AspectRatio { get; } = Mascot.Shared.Poses.Values.First() is { } pose && pose.Rows.Count > 0
+        ? (double)pose.Columns / pose.Rows.Count
+        : 29.0 / 27;
 
     public Rgba Tint
     {
@@ -112,10 +133,21 @@ public sealed partial class MascotView : Canvas
         }
     }
 
+    private bool _wasOnScreen;
+
+    private void HostChanged(XamlRoot sender, XamlRootChangedEventArgs args)
+    {
+        if (sender.IsHostVisible != _wasOnScreen)
+        {
+            Restart();
+        }
+    }
+
     private void Restart()
     {
         _timer.Stop();
-        if (Motion.ReducesMotion)
+        _wasOnScreen = XamlRoot?.IsHostVisible ?? false;
+        if (Motion.ReducesMotion || !_wasOnScreen)
         {
             // A still frame of whatever the mascot is doing: resting, dead, or arm up.
             Draw();
@@ -129,7 +161,8 @@ public sealed partial class MascotView : Canvas
         }
         else if (_isWaving)
         {
-            _timer.Interval = TimeSpan.FromMilliseconds(33);
+            // Woken when the frame changes, not thirty times a second in between.
+            _timer.Interval = NextWaveFrame();
             _timer.Start();
         }
         else if (_isTyping)
@@ -140,9 +173,16 @@ public sealed partial class MascotView : Canvas
         Draw();
     }
 
+    /// <summary>Past the change by a hair, so that the time read back lands on the new frame.</summary>
+    private TimeSpan NextWaveFrame() => _mascot.TimeToNextWaveFrame(DateTimeOffset.UtcNow - _waveStart) + TimeSpan.FromMilliseconds(2);
+
     private void Advance()
     {
         _tick++;
+        if (_isWaving && !IsOverloaded)
+        {
+            _timer.Interval = NextWaveFrame();
+        }
         if (_overloadStart is { } start && DateTimeOffset.UtcNow - start > _mascot.OverloadIntro)
         {
             // Hand over to the slower dead-loop pace once the intro is over.
@@ -173,7 +213,7 @@ public sealed partial class MascotView : Canvas
         var spriteX = Snap((ActualWidth - (cell * sprite.Columns)) / 2);
         var spriteY = Snap((ActualHeight - (cell * sprite.Rows.Count)) / 2);
 
-        var still = Motion.ReducesMotion;
+        var still = Motion.ReducesMotion || !_wasOnScreen;
         if (IsOverloaded)
         {
             TimeSpan? elapsed = still ? null
@@ -206,7 +246,7 @@ public sealed partial class MascotView : Canvas
         {
             return;
         }
-        var still = Motion.ReducesMotion;
+        var still = Motion.ReducesMotion || !_wasOnScreen;
         SpriteFrame frame;
         if (IsOverloaded)
         {

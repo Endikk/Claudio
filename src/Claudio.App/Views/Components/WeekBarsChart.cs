@@ -13,11 +13,11 @@ namespace Claudio.App.Views;
 /// </summary>
 internal sealed partial class WeekBarsChart : StackPanel
 {
-    private const double PlotHeight = 56;
+    private const double PlotHeight = 76;
 
-    private readonly TextBlock _title = Ui.Micro("Last 7 days", 0.55);
-    private readonly TextBlock _day = Ui.Text(string.Empty, 10.5, Ui.SemiBold, 0.6);
-    private readonly TextBlock _tokens = Ui.Text(string.Empty, 10.5, Ui.SemiBold);
+    private readonly TextBlock _title = Ui.SectionLabel("Last 7 days");
+    private readonly TextBlock _day = Ui.Text(string.Empty, 11, Ui.SemiBold, Ui.SecondaryOpacity);
+    private readonly TextBlock _tokens = Ui.Text(string.Empty, 11, Ui.SemiBold);
     private readonly Canvas _plot = new() { Height = PlotHeight, Background = Ui.Primary(0) };
     private readonly Grid _axis = new();
     private readonly SpringValue _growth;
@@ -27,7 +27,7 @@ internal sealed partial class WeekBarsChart : StackPanel
 
     public WeekBarsChart()
     {
-        Spacing = 7;
+        Spacing = 10;
         var header = Ui.Spread(_title, Ui.Row(6, _day, _tokens), VerticalAlignment.Bottom, minimumGap: 4);
         header.Height = 12;
         Children.Add(header);
@@ -42,7 +42,7 @@ internal sealed partial class WeekBarsChart : StackPanel
     {
         _samples = samples;
         _tint = tint;
-        _title.Foreground = Ui.Primary(0.55);
+        _title.Foreground = Ui.Secondary;
         _axis.ColumnDefinitions.Clear();
         foreach (var _ in samples)
         {
@@ -88,20 +88,20 @@ internal sealed partial class WeekBarsChart : StackPanel
         for (var index = 0; index < _samples.Count; index++)
         {
             var height = _samples[index].Tokens / peak * PlotHeight * _growth.Value;
-            var opacity = _hovered is { } hovered ? (index == hovered ? 1 : 0.3) : (index == _samples.Count - 1 ? 1 : 0.45);
+            var opacity = _hovered is { } hovered ? (index == hovered ? 1 : 0.3) : (index == _samples.Count - 1 ? 1 : 0.35);
             var bar = new Rectangle
             {
                 Width = band * 0.62,
                 Height = Math.Max(height, 0),
-                RadiusX = 3,
-                RadiusY = 3,
+                RadiusX = 5,
+                RadiusY = 5,
                 Fill = Ui.Brush(_tint, opacity),
             };
             Canvas.SetLeft(bar, (index * band) + (band * 0.19));
             Canvas.SetTop(bar, PlotHeight - bar.Height);
             _plot.Children.Add(bar);
 
-            var initial = Ui.Text(UsageFormat.DayInitial(_samples[index].Date), 8.5, Ui.SemiBold, 0.5);
+            var initial = Ui.Text(UsageFormat.DayInitial(_samples[index].Date), 11, Ui.Medium, Ui.SecondaryOpacity);
             initial.HorizontalAlignment = HorizontalAlignment.Center;
             Grid.SetColumn(initial, index);
             _axis.Children.Add(initial);
@@ -110,20 +110,20 @@ internal sealed partial class WeekBarsChart : StackPanel
         if (average > 0)
         {
             var y = PlotHeight - (average / peak * PlotHeight * _growth.Value);
-            _plot.Children.Add(new Line { X1 = 0, X2 = width, Y1 = y, Y2 = y, Stroke = Ui.Primary(0.25), StrokeThickness = 1, StrokeDashArray = [3, 3] });
+            _plot.Children.Add(new Line { X1 = 0, X2 = width, Y1 = y, Y2 = y, Stroke = Ui.Tertiary, StrokeThickness = 1, StrokeDashArray = [3, 3] });
         }
 
         if (_hovered is { } day)
         {
-            Ui.Restyle(_day, UsageFormat.DayName(_samples[day].Date, DateTimeOffset.UtcNow), 0.6);
+            Ui.Restyle(_day, UsageFormat.DayName(_samples[day].Date, DateTimeOffset.UtcNow), Ui.SecondaryOpacity);
             Ui.Restyle(_tokens, UsageFormat.Tokens(_samples[day].Tokens), 1, _tint);
             _tokens.FontWeight = Ui.SemiBold;
         }
         else
         {
             _day.Text = string.Empty;
-            Ui.Restyle(_tokens, average > 0 ? $"avg {UsageFormat.Tokens((long)average)} / day" : string.Empty, 0.4);
-            _tokens.FontWeight = Ui.Medium;
+            Ui.Restyle(_tokens, average > 0 ? $"avg {UsageFormat.Tokens((long)average)} a day" : string.Empty, Ui.SecondaryOpacity);
+            _tokens.FontWeight = Ui.Regular;
         }
     }
 }

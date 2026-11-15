@@ -24,21 +24,21 @@ internal sealed partial class NotchActivityView : StackPanel
     private readonly UsageViewModel _model;
     private readonly Border _mascotLanding = new() { Width = NotchFlight.MascotWidth, Height = NotchFlight.MascotSize, HorizontalAlignment = HorizontalAlignment.Left };
     private readonly IslandPercent _figureLanding = new() { Opacity = 0, IsHitTestVisible = false };
-    private readonly TextBlock _leadLabel = Ui.Micro(string.Empty, 0.5);
+    private readonly TextBlock _leadLabel = Ui.SectionLabel(string.Empty);
     private readonly Border _notchSpace = new();
     private readonly Border _modelPill;
-    private readonly TextBlock _modelText = Ui.Text(string.Empty, 9.5, Ui.SemiBold, 0.6);
+    private readonly TextBlock _modelText = Ui.Text(string.Empty, 11, Ui.SemiBold, Ui.SecondaryOpacity);
     private readonly Grid _top = new();
     private readonly UsageBar _bar = new(6);
-    private readonly TextBlock _pace = Ui.Text(string.Empty, 10.5, Ui.Medium);
-    private readonly TextBlock _reset = Ui.Text(string.Empty, 10.5, Ui.Medium, 0.55);
+    private readonly TextBlock _pace = Ui.Text(string.Empty, 11, Ui.Medium);
+    private readonly TextBlock _reset = Ui.Text(string.Empty, 11, Ui.Medium, Ui.SecondaryOpacity);
     private readonly StackPanel _window;
-    private readonly TextBlock _spent = Ui.Text(string.Empty, 11, Ui.Medium, 0.65);
+    private readonly TextBlock _spent = Ui.Text(string.Empty, 11, Ui.Medium, Ui.SecondaryOpacity);
     private readonly Grid _others = new() { ColumnSpacing = 24 };
     private readonly SignInControls _signIn;
     private readonly StackPanel _signedOut;
     private readonly Grid _error = new();
-    private readonly TextBlock _errorText = Ui.Text(string.Empty, 10.5, Ui.Medium, 0.65);
+    private readonly TextBlock _errorText = Ui.Text(string.Empty, 11, Ui.Medium, Ui.SecondaryOpacity);
     private readonly UpdateRow _updateRow;
     private readonly List<(Grid Row, TextBlock Title, UsageBar Bar, TextBlock Value)> _small = [];
 
@@ -48,7 +48,7 @@ internal sealed partial class NotchActivityView : StackPanel
         _updateRow = new UpdateRow(updates);
         _signIn = new SignInControls(model);
         // Built once: an element can only ever have one parent, and the body is rebuilt at every reading.
-        _signedOut = Ui.Column(8, Ui.Text("Not signed in to Claude", 12, Ui.Medium, 0.7), _signIn);
+        _signedOut = Ui.Column(8, Ui.Text("Not signed in to Claude", 12, Ui.Medium, Ui.SecondaryOpacity), _signIn);
         Spacing = 10;
         Padding = new Thickness(SidePadding, 6, SidePadding, 16);
         Width = Theme.Metric("islandWidth");
@@ -61,7 +61,7 @@ internal sealed partial class NotchActivityView : StackPanel
         _top.Children.Add(_mascotLanding);
 
         _modelText.TextTrimming = TextTrimming.None;
-        _modelPill = Ui.Capsule(new Border { Padding = new Thickness(7, 3, 7, 3), Child = _modelText, HorizontalAlignment = HorizontalAlignment.Center });
+        _modelPill = new Border { Child = _modelText, HorizontalAlignment = HorizontalAlignment.Center };
         var underNotch = Ui.Column(0, _notchSpace, _modelPill);
         underNotch.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(underNotch, 1);
@@ -81,7 +81,7 @@ internal sealed partial class NotchActivityView : StackPanel
         for (var column = 0; column < 2; column++)
         {
             _others.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            var small = (Title: Ui.Text(string.Empty, 10.5, Ui.Medium, 0.55), Bar: new UsageBar(4, showsGlow: false), Value: Ui.Text(string.Empty, 11, Ui.SemiBold, 0.85));
+            var small = (Title: Ui.Text(string.Empty, 11, Ui.Medium, Ui.SecondaryOpacity), Bar: new UsageBar(4), Value: Ui.Text(string.Empty, 11, Ui.SemiBold, 0.85));
             small.Title.TextTrimming = TextTrimming.None;
             small.Value.TextTrimming = TextTrimming.None;
             var row = new Grid { ColumnSpacing = 8 };
@@ -132,10 +132,9 @@ internal sealed partial class NotchActivityView : StackPanel
         _notchSpace.Height = Notch.Height + 6;
         _top.ColumnDefinitions[1].MinWidth = Notch.Width + (2 * NotchClearance);
         _figureLanding.Update(lead);
-        Ui.Restyle(_leadLabel, $"{lead.Title} · {lead.Window}".ToUpperInvariant(), 0.5);
+        Ui.Restyle(_leadLabel, $"{lead.Title} · {lead.Window}", Ui.SecondaryOpacity);
         _modelPill.Visibility = snapshot.ActiveModel.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        Ui.Restyle(_modelText, snapshot.ActiveModel, 0.6);
-        _modelPill.Background = Ui.Primary(0.1);
+        Ui.Restyle(_modelText, snapshot.ActiveModel, Ui.SecondaryOpacity);
 
         _window.Visibility = showsQuotas ? Visibility.Visible : Visibility.Collapsed;
         if (showsQuotas)
@@ -144,23 +143,23 @@ internal sealed partial class NotchActivityView : StackPanel
             _bar.Update(lead.IsMeasured ? lead.Percent : 0, Theme.Tint(lead.Accent, lead.Percent), active ? lead.Elapsed(now) : null);
             if (UsageFormat.PaceOf(lead, now) is { } pace)
             {
-                Ui.Restyle(_pace, pace.Text, 1, Theme.Color(pace.Ink, Ui.IsDark));
+                Ui.Restyle(_pace, char.ToUpperInvariant(pace.Text[0]) + pace.Text[1..], 1, Theme.Color(pace.Ink, isDark: true));
             }
             else
             {
                 _pace.Text = string.Empty;
             }
-            Ui.Restyle(_reset, activity.ResetLine, 0.55);
+            Ui.Restyle(_reset, activity.ResetLine, Ui.SecondaryOpacity);
         }
 
         _spent.Visibility = showsQuotas && activity.SpentLine is not null ? Visibility.Visible : Visibility.Collapsed;
-        Ui.Restyle(_spent, activity.SpentLine ?? string.Empty, 0.65);
+        Ui.Restyle(_spent, activity.SpentLine ?? string.Empty, Ui.SecondaryOpacity);
         _others.Visibility = showsQuotas && activity.SpentLine is null && activity.Others.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         for (var index = 0; index < _small.Count && index < activity.Others.Count; index++)
         {
             var window = activity.Others[index];
             var (row, title, bar, value) = _small[index];
-            Ui.Restyle(title, window.Title, 0.55);
+            Ui.Restyle(title, window.Title, Ui.SecondaryOpacity);
             bar.Update(window.IsMeasured ? window.Percent : 0, Theme.Tint(window.Accent, window.Percent), window.IsActive(now) ? window.Elapsed(now) : null);
             Ui.Restyle(value, window.IsMeasured ? $"{UsageFormat.Percent(window)}%" : UsageFormat.NoFigure, window.IsMeasured ? 0.85 : 0.4);
             Ui.Tooltip(row, window.IsActive(now)
@@ -176,7 +175,7 @@ internal sealed partial class NotchActivityView : StackPanel
 
         var error = _model.ErrorMessage;
         _error.Visibility = error is null ? Visibility.Collapsed : Visibility.Visible;
-        Ui.Restyle(_errorText, error ?? string.Empty, 0.65);
+        Ui.Restyle(_errorText, error ?? string.Empty, Ui.SecondaryOpacity);
         _updateRow.Update();
     }
 

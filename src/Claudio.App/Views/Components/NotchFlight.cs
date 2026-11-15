@@ -58,6 +58,6 @@ internal sealed partial class IslandPercent : ContentControl
     {
         var scale = _size / LandedSize;
         Ui.Figure(_text, UsageFormat.Percent(window), Ui.Primary(window.IsMeasured ? 0.95 : 0.45), window.IsMeasured,
-                  16 * scale, Ui.Primary(0.4), Ui.Medium);
+                  16 * scale, Ui.Secondary, Ui.Medium);
     }
 }

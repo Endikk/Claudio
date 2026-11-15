@@ -34,6 +34,7 @@ internal sealed partial class MenuBarController : IDisposable
     private string _menuKey = string.Empty;
     private string _figureKey = string.Empty;
     private nint _figureIcon;
+    private nint _shown;
 
     private enum Pose
     {
@@ -165,9 +166,9 @@ internal sealed partial class MenuBarController : IDisposable
             {
                 _animation.Interval = TimeSpan.FromMilliseconds(pose switch
                 {
-                    Pose.Typing => _mascot.TypingLoop[0].Milliseconds,
+                    Pose.Typing => TypingInterval,
                     Pose.Exploding => 35,
-                    Pose.Waving => 30,
+                    Pose.Waving => (int)Math.Ceiling(NextWaveFrame(TimeSpan.Zero).TotalMilliseconds),
                     _ => 130,
                 });
                 _animation.Start();
@@ -185,12 +186,26 @@ internal sealed partial class MenuBarController : IDisposable
         }
     }
 
+    /// <summary>
+    /// How long a frame of the typing stays next to the clock: twice the card's, as Claudy's in the
+    /// menu bar, since each new image has the shell redraw the whole icon.
+    /// </summary>
+    private int TypingInterval => _mascot.TypingLoop[0].Milliseconds * 2;
+
+    /// <summary>Past the change by a hair, so that the time read back lands on the new frame.</summary>
+    private TimeSpan NextWaveFrame(TimeSpan elapsed) => _mascot.TimeToNextWaveFrame(elapsed) + TimeSpan.FromMilliseconds(2);
+
     private void Advance()
     {
         if (_pose == Pose.Exploding && DateTimeOffset.UtcNow - _since >= _mascot.OverloadIntro)
         {
             _pose = Pose.Dead;
             _animation.Interval = TimeSpan.FromMilliseconds(130);
+        }
+        if (_pose == Pose.Waving)
+        {
+            // Woken when the frame changes, not thirty times a second in between.
+            _animation.Interval = NextWaveFrame(DateTimeOffset.UtcNow - _since);
         }
         Draw();
     }
@@ -205,29 +220,43 @@ internal sealed partial class MenuBarController : IDisposable
         switch (_pose)
         {
             case Pose.Typing:
-                var index = (int)(elapsed.TotalMilliseconds / _mascot.TypingLoop[0].Milliseconds) % _mascot.TypingLoop.Count;
-                _tray.UpdateIcon(Icon(_mascot.TypingLoop[index], _mascot.TypingLoop[index].Name));
+                var index = (int)(elapsed.TotalMilliseconds / TypingInterval) % _mascot.TypingLoop.Count;
+                Put(Icon(_mascot.TypingLoop[index], _mascot.TypingLoop[index].Name));
                 break;
             case Pose.Exploding:
                 var blast = _mascot.Overload[_mascot.OverloadFrameIndex(elapsed)];
-                _tray.UpdateIcon(Icon(Crop(blast), blast.Name));
+                Put(Icon(Crop(blast), blast.Name));
                 break;
             case Pose.Dead:
                 // Opening on a full quota shows the dead state directly, as the card does; a still
                 // frame of it when Windows' animations are off.
                 var dead = _mascot.Overload[_mascot.OverloadFrameIndex(Motion.ReducesMotion ? null : _mascot.OverloadIntro + elapsed)];
-                _tray.UpdateIcon(Icon(Crop(dead), dead.Name));
+                Put(Icon(Crop(dead), dead.Name));
                 break;
             case Pose.Waving:
                 // The wave is drawn on a taller grid than it needs: its empty rows go first.
                 var wave = _mascot.Wave[_mascot.WaveFrameIndex(elapsed)];
                 var (first, count) = _mascot.WaveContentRows;
-                _tray.UpdateIcon(Icon(wave with { Rows = wave.Rows.Skip(first).Take(count).ToList() }, $"wave-{wave.Name}"));
+                Put(Icon(wave with { Rows = wave.Rows.Skip(first).Take(count).ToList() }, $"wave-{wave.Name}"));
                 break;
             default:
-                _tray.UpdateIcon(Icon(_mascot.Poses["resting"], "resting"));
+                Put(Icon(_mascot.Poses["resting"], "resting"));
                 break;
         }
+    }
+
+    /// <summary>
+    /// Puts a frame next to the clock, unless it is the one already there: each change of icon has
+    /// the shell redraw it, which costs far more than the frame itself.
+    /// </summary>
+    private void Put(nint icon)
+    {
+        if (icon == _shown)
+        {
+            return;
+        }
+        _shown = icon;
+        _tray.UpdateIcon(icon);
     }
 
     /// <summary>
@@ -332,6 +361,7 @@ internal sealed partial class MenuBarController : IDisposable
             DestroyIcon(handle);
         }
         _icons.Clear();
+        _shown = 0;
     }
 
     private void Restyle()
@@ -348,6 +378,7 @@ internal sealed partial class MenuBarController : IDisposable
         {
             _tray.TryRemove();
             _figure.TryRemove();
+            _shown = 0;
             // Explorer says its taskbar is back, but the window it is found by may take a moment.
             CreateWhenReady();
         }

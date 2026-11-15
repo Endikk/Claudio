@@ -62,6 +62,22 @@ public sealed class DesignTests
         Assert.All(used, ink => Assert.NotNull(_mascot.Paint(ink, coral, _tokens)));
     }
 
+    /// <summary>The wave is woken when its frame changes: the wait always lands on the next frame.</summary>
+    [Fact]
+    public void TheWaveWakesWhenItsFrameChanges()
+    {
+        var first = _mascot.Wave[0].Milliseconds;
+        Assert.Equal(TimeSpan.FromMilliseconds(first), _mascot.TimeToNextWaveFrame(TimeSpan.Zero));
+        Assert.Equal(TimeSpan.FromMilliseconds(first - 10), _mascot.TimeToNextWaveFrame(TimeSpan.FromMilliseconds(10)));
+        var loop = _mascot.Wave.Sum(frame => frame.Milliseconds);
+        for (var at = 0; at < loop; at += 37)
+        {
+            var elapsed = TimeSpan.FromMilliseconds(at);
+            var next = elapsed + _mascot.TimeToNextWaveFrame(elapsed) + TimeSpan.FromMilliseconds(2);
+            Assert.NotEqual(_mascot.WaveFrameIndex(elapsed), _mascot.WaveFrameIndex(next));
+        }
+    }
+
     [Fact]
     public void BodyTakesTheTintAndShadesIt()
     {

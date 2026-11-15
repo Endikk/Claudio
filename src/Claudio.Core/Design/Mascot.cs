@@ -108,6 +108,27 @@ public sealed class Mascot
     }
 
     /// <summary>
+    /// How long until the wave frame on screen <paramref name="elapsed"/> into its loop gives way to
+    /// the next, as Claudy's <c>ClaudyWave.timeToNextFrame</c>: the wave is redrawn when its frame
+    /// changes and not in between, a frame staying up from 90 ms to more than a second.
+    /// </summary>
+    public TimeSpan TimeToNextWaveFrame(TimeSpan elapsed)
+    {
+        var loop = Math.Max(Wave.Sum(frame => frame.Milliseconds), 1);
+        var position = elapsed.TotalMilliseconds % loop;
+        double end = 0;
+        foreach (var frame in Wave)
+        {
+            end += frame.Milliseconds;
+            if (position < end)
+            {
+                return TimeSpan.FromMilliseconds(end - position);
+            }
+        }
+        return TimeSpan.FromMilliseconds(Wave.Count > 0 ? Wave[0].Milliseconds : loop);
+    }
+
+    /// <summary>
     /// Rows any wave frame draws on. The grid keeps empty rows for the export's margin; cropping
     /// them lets the waving mascot take the typing one's place at the same scale.
     /// </summary>

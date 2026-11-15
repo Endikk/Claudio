@@ -17,10 +17,10 @@ internal sealed partial class MenuBarView : StackPanel
 {
     private readonly UsageViewModel _model;
     private readonly UpdateChecker _updates;
-    private readonly MascotView _mascot = new() { Width = 29, Height = 27 };
-    private readonly TextBlock _name = Ui.Text("Claudio", 14, Ui.SemiBold, 0.9);
+    private readonly MascotView _mascot = new() { Width = 32, Height = 30 };
+    private readonly TextBlock _name = Ui.Text("Claudio", 16, Ui.SemiBold);
     private readonly StackPanel _status = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
-    private readonly StackPanel _body = new() { Spacing = 12 };
+    private readonly StackPanel _body = new();
     private readonly QuotaRing _lead = new();
     private readonly QuotaRing _weekly = new(0.08);
     private readonly QuotaRing _scoped = new(0.16);
@@ -29,7 +29,7 @@ internal sealed partial class MenuBarView : StackPanel
     private readonly SignInControls _signIn;
     private readonly StackPanel _signedOut;
     private readonly UpdateRow _updateRow;
-    private readonly TextBlock _updated = Ui.Text(string.Empty, 9.5, Ui.Medium, 0.35);
+    private readonly TextBlock _updated = Ui.Meta(string.Empty);
     private string? _hoveredModel;
     private readonly FontIcon _refresh;
     private readonly TextBlock _widget;
@@ -40,14 +40,19 @@ internal sealed partial class MenuBarView : StackPanel
         _updates = updates;
         _signIn = new SignInControls(model);
         // Built once: an element can only ever have one parent, and the body is rebuilt at every reading.
-        _signedOut = Ui.Column(10, Ui.Text("Not signed in to Claude", 12, Ui.Medium, 0.7), _signIn);
+        _signedOut = Ui.Column(10, Ui.Text("Not signed in to Claude", 12, Ui.Medium, Ui.SecondaryOpacity), _signIn);
+        _signedOut.Margin = new Thickness(8, 6, 8, 6);
         _updateRow = new UpdateRow(updates);
-        Spacing = 12;
-        Padding = new Thickness(Theme.Metric("padding"));
+        var gap = Theme.Metric("gap");
+        Spacing = gap;
+        _body.Spacing = gap;
+        Padding = new Thickness(Theme.Metric("panelPadding"));
         Width = Theme.Metric("menuBarWidth");
 
         _name.VerticalAlignment = VerticalAlignment.Center;
-        Children.Add(Ui.Spread(Ui.Row(8, _mascot, _name), _status));
+        var header = Ui.Spread(Ui.Row(8, _mascot, _name), _status);
+        header.Margin = new Thickness(4, 0, 4, 0);
+        Children.Add(header);
 
         for (var column = 0; column < 3; column++)
         {
@@ -58,6 +63,8 @@ internal sealed partial class MenuBarView : StackPanel
         _rings.Children.Add(_lead);
         _rings.Children.Add(_weekly);
         _rings.Children.Add(_scoped);
+        _rings.Margin = new Thickness(0, 4, 0, 4);
+        _bars.Margin = new Thickness(8, 4, 8, 4);
         Children.Add(_body);
         Children.Add(_updateRow);
 
@@ -66,7 +73,9 @@ internal sealed partial class MenuBarView : StackPanel
         _widget = Ui.Text("Floating widget", 11, Ui.Medium);
         var refresh = Ui.Plain(_refresh, () => _ = model.RefreshAsync(userInitiated: true), "Refresh");
         var widget = Ui.Plain(_widget, showWidget, "Show the widget on the desktop instead");
-        Children.Add(Ui.Spread(_updated, Ui.Row(10, refresh, widget), minimumGap: 10));
+        var footer = Ui.Spread(_updated, Ui.Row(10, refresh, widget), minimumGap: 10);
+        footer.Margin = new Thickness(6, 0, 6, 0);
+        Children.Add(footer);
     }
 
     /// <summary>Opening the flyout replays the rings and the bars.</summary>
@@ -86,7 +95,7 @@ internal sealed partial class MenuBarView : StackPanel
         _mascot.Tint = Theme.Tint(lead.Accent, lead.Percent);
         _mascot.IsOverloaded = snapshot.IsOverloaded;
         _mascot.IsTyping = snapshot.Session.IsRunning(now);
-        _name.Foreground = Ui.Primary(0.9);
+        _name.Foreground = Ui.Primary(1);
 
         _status.Children.Clear();
         if (_model.ErrorMessage is { } message)
@@ -97,7 +106,9 @@ internal sealed partial class MenuBarView : StackPanel
         }
         if (snapshot.ActiveModel.Length > 0)
         {
-            _status.Children.Add(Ui.Pill(snapshot.ActiveModel, null, stroked: false));
+            var active = Ui.Text(snapshot.ActiveModel, 12, Ui.Medium, Ui.SecondaryOpacity);
+            active.VerticalAlignment = VerticalAlignment.Center;
+            _status.Children.Add(active);
         }
 
         _body.Children.Clear();
@@ -109,19 +120,23 @@ internal sealed partial class MenuBarView : StackPanel
             // A plan billed on usage has no weekly or per-model quota to ring.
             _weekly.Visibility = _scoped.Visibility = snapshot.Spend is null ? Visibility.Visible : Visibility.Collapsed;
             _body.Children.Add(_rings);
-            _body.Children.Add(Ui.Hairline());
+            // On the glass, apart by hairlines: only a waiting session is a block.
+            _body.Children.Add(Ui.Rule());
             _bars.Update(snapshot.History, Theme.Color(Accent.Coral));
             _body.Children.Add(_bars);
             if (snapshot.Models.Count > 0)
             {
-                _body.Children.Add(Ui.Hairline());
-                _body.Children.Add(ModelSplit(snapshot.Models));
+                _body.Children.Add(Ui.Rule());
+                var split = ModelSplit(snapshot.Models);
+                split.Margin = new Thickness(8, 4, 8, 4);
+                _body.Children.Add(split);
             }
             // The demo set has no account to sign out of.
             if (_model.IsSignedIn)
             {
-                _body.Children.Add(Ui.Hairline());
-                _body.Children.Add(AccountRow(snapshot.Account));
+                var account = AccountRow(snapshot.Account);
+                account.Margin = new Thickness(6, 0, 6, 0);
+                _body.Children.Add(account);
             }
         }
         else if (_model.HasLoaded)
@@ -132,7 +147,7 @@ internal sealed partial class MenuBarView : StackPanel
         }
         _body.Visibility = _body.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         _updateRow.Update();
-        Ui.Restyle(_updated, $"updated {UsageFormat.Clock(snapshot.UpdatedAt)}", 0.35);
+        Ui.Restyle(_updated, $"Updated {UsageFormat.Clock(snapshot.UpdatedAt)}", Ui.SecondaryOpacity);
         var accent = Ui.SystemAccent;
         _refresh.Foreground = Ui.Brush(accent, _model.IsRefreshing ? 0.4 : 1);
         _widget.Foreground = Ui.Brush(accent);
@@ -156,18 +171,18 @@ internal sealed partial class MenuBarView : StackPanel
         var legend = Ui.Column(4);
         foreach (var model in models)
         {
-            var share = Ui.Text($"{Math.Round(model.Share * 100):0} %", 10.5, Ui.SemiBold, 0.75);
-            share.Width = 34;
+            var share = Ui.Text($"{Math.Round(model.Share * 100):0}%", 12, Ui.SemiBold, 1, Theme.Color(model.Accent));
+            share.Width = 38;
             share.TextAlignment = TextAlignment.Right;
-            var row = Ui.Spread(Ui.Row(6, Ui.Dot(6, Theme.Color(model.Accent)), Ui.Text(model.Name, 10.5, Ui.Medium, 0.7)),
-                                Ui.Row(8, Ui.Text(UsageFormat.Tokens(model.Tokens), 10, Ui.Medium, 0.4), share));
+            var row = Ui.Spread(Ui.Row(6, Ui.Dot(7, Theme.Color(model.Accent)), Ui.Text(model.Name, 13, Ui.Medium)),
+                                Ui.Row(8, Ui.Meta(UsageFormat.Tokens(model.Tokens)), share), minimumGap: 8);
             row.Background = Ui.Primary(0);
             row.Opacity = ModelOpacity(model.Id);
             row.PointerEntered += (_, _) => Hover(model.Id);
             row.PointerExited += (_, _) => Hover(null);
             legend.Children.Add(row);
         }
-        return Ui.Column(7, Ui.Micro("By model · 7d", 0.55), bar, legend);
+        return Ui.Column(8, Ui.SectionLabel("By model · 7 days"), bar, legend);
     }
 
     /// <summary>Everything stays lit until something is hovered; then only that model does.</summary>
@@ -185,7 +200,7 @@ internal sealed partial class MenuBarView : StackPanel
     /// <summary>Whose quotas these are, and the way out. Signing out leaves Claude Code signed in.</summary>
     private Grid AccountRow(Account account)
     {
-        var who = Ui.Text(account.Email.Length == 0 ? account.Name : account.Email, 10.5, Ui.Medium, 0.55);
+        var who = Ui.Text(account.Email.Length == 0 ? account.Name : account.Email, 11, Ui.Medium, Ui.SecondaryOpacity);
         var signOut = Ui.Plain(Ui.Text("Sign out", 11, Ui.Medium, 1, Ui.SystemAccent), _model.SignOut,
                                "Claudio stops reading your quotas until you sign back in. Claude Code stays signed in.");
         return Ui.Spread(who, signOut);
