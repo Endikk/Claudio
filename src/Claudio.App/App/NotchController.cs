@@ -110,7 +110,7 @@ internal sealed partial class NotchController : IDisposable
             _frame = default;
             SetFrame(_layout.RestingFrame);
         }
-        _stepsAside = PanelChrome.IsFullScreenAppInFront();
+        _stepsAside = FullScreenInFront();
         if (!_stepsAside)
         {
             panel.ShowPanel();
@@ -154,6 +154,13 @@ internal sealed partial class NotchController : IDisposable
         }
     }
 
+    /// <summary>A game or a presentation full screen in front; never while filming, whatever is in front.</summary>
+#if DEBUG
+    private static bool FullScreenInFront() => !App.IsFilming && PanelChrome.IsFullScreenAppInFront();
+#else
+    private static bool FullScreenInFront() => PanelChrome.IsFullScreenAppInFront();
+#endif
+
     /// <summary>
     /// The shortcut opens the island, or closes it, as Claudy's <c>toggle</c>. False when the island
     /// is not on screen.
@@ -195,6 +202,13 @@ internal sealed partial class NotchController : IDisposable
     /// <summary>A click elsewhere closes an island the shortcut opened, unless the pointer has come onto it.</summary>
     private void CheckOutsideClick()
     {
+#if DEBUG
+        // Filming: the clicks of whoever uses this PC meanwhile are not the film's.
+        if (App.IsFilming)
+        {
+            return;
+        }
+#endif
         if (!_watchesOutsideClicks)
         {
             return;
@@ -337,7 +351,7 @@ internal sealed partial class NotchController : IDisposable
         // Every two seconds: a game or a presentation running full screen in front.
         if (++_ticks % (_watchesOutsideClicks ? 40 : 8) == 0)
         {
-            var stepsAside = PanelChrome.IsFullScreenAppInFront();
+            var stepsAside = FullScreenInFront();
             if (stepsAside != _stepsAside)
             {
                 _stepsAside = stepsAside;

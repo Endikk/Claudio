@@ -58,6 +58,15 @@ internal sealed partial class RoomWindow : FloatingPanel
         SetTopmost(false);
         _isCentring = true;
         PlaceRoughly();
+#if DEBUG
+        // Filming takes the keyboard from nobody.
+        if (App.IsFilming)
+        {
+            AppWindow.Show(activateWindow: false);
+            Centre();
+            return;
+        }
+#endif
         AppWindow.Show(activateWindow: true);
         Activate();
         // Opened from a shortcut or a menu while another app is in front: Windows keeps a new

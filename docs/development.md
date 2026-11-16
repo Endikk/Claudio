@@ -25,6 +25,22 @@ beside a Claudio already running. `--room-preview 21.5` lights the room for that
 `--room-weather snow` (clear, overcast, rain, snow) chooses the weather, `--room-quota 0.95` sets
 the session quota, and `--room-snapshot room.png` writes a frame drawn off screen to a file.
 
+### The README's recording
+
+`--film <folder>` (Debug builds) has Claudio play the README's recording by itself, on made-up
+sessions, agents, ports and quotas: the strip, the card and its details, the Sessions and Ports
+tabs, the island, the agent room, and the mascot at 100 %. Nothing real is read or touched, and it
+takes nobody's keyboard. `Scripts/record-demo.ps1` runs it in a settings folder of its own and
+films its windows with `PrintWindow`, whatever lies over them; `Scripts/make-demo-video.py` lays
+the frames on the wallpaper with the captions and writes `docs/claudio-demo.gif` and
+`docs/claudio-demo.fr.gif`, as Claudy's recording, in Claudio's own colours.
+
+```powershell
+dotnet build src/Claudio.App -p:Platform=x64
+./Scripts/record-demo.ps1 -Out film
+python Scripts/make-demo-video.py film
+```
+
 ## Build what is released
 
 ```powershell
@@ -84,7 +100,8 @@ src/Claudio.App/       the WinUI 3 app (Windows App SDK, unpackaged, self-contai
 └── Assets/            the icon, and Nunito, the rounded face (SIL Open Font License)
 tests/                 xUnit, on Claudio.Core
 claudy/                Design/ and Fixtures/ pulled from Claudy, never edited here
-Scripts/               sync-claudy.ps1 · make-icon.py · make-mascot-gifs.py
+Scripts/               sync-claudy.ps1 · make-icon.py · make-mascot-gifs.py · record-demo.ps1 ·
+                       make-demo-video.py
 ```
 
 Each Claudy view has its class here, under the same name, built in code rather than XAML so the

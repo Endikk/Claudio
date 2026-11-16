@@ -24,7 +24,7 @@ public static class Program
         using var instance = new Mutex(initiallyOwned: true, InstanceName, out var isFirst);
 #if DEBUG
         // The room's preview opens beside a Claudio already running.
-        isFirst |= RoomPreviewWindow.IsRequested;
+        isFirst |= RoomPreviewWindow.IsRequested || App.IsFilming;
 #endif
         if (!isFirst)
         {

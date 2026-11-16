@@ -14,9 +14,7 @@
 
 <p align="center"><img src="docs/claudio-typing.gif" width="132" alt="Claudio, the pixel mascot, typing at its laptop"></p>
 
-<p align="center"><img src="docs/claudio-card.png" width="352" alt="The Claudio card: the 5h session in its tile, the weekly and per-model windows, the week's curve, split by model and project"></p>
-
-<p align="center"><img src="docs/claudio-room.png" width="620" alt="The agent room: one open space per project, every agent at a desk in the area of its work, Claudy at the centre desk"></p>
+<p align="center"><img src="docs/claudio-demo.gif" width="620" alt="Claudio in a minute: the compact strip, the usage card and its details, the Sessions and Ports tabs, the island at the top of the screen, the agent room where each agent sits at a desk, and the mascot at 100 %"></p>
 
 </div>
 

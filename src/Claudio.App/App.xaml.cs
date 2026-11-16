@@ -91,7 +91,18 @@ public partial class App : Application
         // A server of a session still open is never listed: the ports scan asks which are.
         var ports = new PortsViewModel(ui, () => _liveSessions);
         var sessions = new WindowsSessions();
+#if DEBUG
+        // `--film`: made-up sessions and agents, nothing real read or touched.
+        var agents = IsFilming
+            ? new AgentsViewModel(_filmScanner, new FilmActions())
+            : new AgentsViewModel(AgentScanner.Create(model.Home, sessions.Identity), sessions);
+        if (IsFilming)
+        {
+            UsageViewModel.FilmTransform = FilmSnapshot;
+        }
+#else
         var agents = new AgentsViewModel(AgentScanner.Create(model.Home, sessions.Identity), sessions);
+#endif
         var notifier = new Notifier(ui);
         _model = model;
         _updates = updates;
@@ -147,16 +158,40 @@ public partial class App : Application
 
         model.OnUserRefresh = updates.CheckNow;
         model.Changed += Render;
+#if DEBUG
+        if (!IsFilming)
+        {
+            model.Changed += AlertQuota;
+        }
+#else
         model.Changed += AlertQuota;
+#endif
         updates.Changed += Render;
         ports.Changed += Render;
         agents.Changed += Render;
         notifier.Changed += Render;
+#if DEBUG
+        if (!IsFilming)
+        {
+            BindAlerts();
+        }
+#else
         BindAlerts();
+#endif
 
         card.Present();
         Place();
         Render();
+#if DEBUG
+        if (IsFilming)
+        {
+            FilmPorts(ports);
+            StartAgents(ui, () => { });
+            StartFilm(ui);
+            _ = Logged(model.RefreshAsync());
+            return;
+        }
+#endif
         // The ports scan starts after the first pass over the sessions: before it, every MCP
         // server would read as left behind by a closed session.
         StartAgents(ui, ports.Start);

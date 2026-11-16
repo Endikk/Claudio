@@ -13,7 +13,7 @@ src/Claudio.App/     the WinUI 3 app (Windows App SDK, unpackaged, self-containe
   App/ Services/ ViewModels/ Theme/ Views/ (see development.md)
 tests/               xUnit; includes the fixtures shared with Claudy
 claudy/              Design/ and Fixtures/ pulled from Claudy, never edited here
-Scripts/             sync-claudy.ps1, make-icon.py, make-mascot-gifs.py
+Scripts/             sync-claudy.ps1, make-icon.py, make-mascot-gifs.py, record-demo.ps1, make-demo-video.py
 ```
 
 ## Claudy is the reference

@@ -92,6 +92,11 @@ internal sealed partial class UsageViewModel : IDisposable
 
     public event Action? Changed;
 
+#if DEBUG
+    /// <summary><c>--film</c>: each reading is turned into the recording's made-up one.</summary>
+    internal static Func<UsageSnapshot, UsageSnapshot>? FilmTransform { get; set; }
+#endif
+
     /// <summary>Called on every refresh the user asks for; the app looks for a new Claudio there.</summary>
     public Action? OnUserRefresh { get; set; }
 
@@ -173,6 +178,12 @@ internal sealed partial class UsageViewModel : IDisposable
                 _client.ResetBackoff();
             }
             Snapshot = await _source.FetchAsync();
+#if DEBUG
+            if (FilmTransform is { } film)
+            {
+                Snapshot = film(Snapshot);
+            }
+#endif
             ErrorMessage = null;
         }
         catch (UsageDataException error)

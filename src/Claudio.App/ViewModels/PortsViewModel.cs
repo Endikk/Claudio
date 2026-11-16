@@ -72,6 +72,18 @@ internal sealed class PortsViewModel : IDisposable
     /// <summary>What the servers listed hold, in bytes; <see cref="PortsText.Memory"/> writes it.</summary>
     public ulong McpMemory => PortsText.McpMemory(McpOrphans);
 
+#if DEBUG
+    /// <summary><c>--film</c>: a made-up reading, and no scan of the real ports ever after.</summary>
+    internal void Film(PortScanState state, IReadOnlyList<McpOrphan> servers)
+    {
+        _isDisposed = true;
+        _timer.Stop();
+        State = state;
+        McpOrphans = servers;
+        Changed?.Invoke();
+    }
+#endif
+
     public void Start()
     {
         Schedule(BackgroundInterval);
