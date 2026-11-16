@@ -14,7 +14,9 @@
 
 <p align="center"><img src="docs/claudio-typing.gif" width="132" alt="Claudio, la mascotte en pixel art, qui tape sur son ordinateur"></p>
 
-<p align="center"><img src="docs/claudio-card.png" width="352" alt="La carte Claudio : session 5 h, quotas hebdomadaires, totaux du jour, courbe sur 7 jours, répartition par modèle et par projet"></p>
+<p align="center"><img src="docs/claudio-card.png" width="352" alt="La carte Claudio : la session 5 h dans sa tuile, les fenêtres hebdomadaire et par modèle, la courbe de la semaine, répartition par modèle et par projet"></p>
+
+<p align="center"><img src="docs/claudio-room.png" width="620" alt="La salle des agents : un open space par projet, chaque agent à un bureau dans la zone de son travail, Claudy au bureau central"></p>
 
 </div>
 

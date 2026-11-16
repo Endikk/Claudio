@@ -2,43 +2,94 @@
 
 All notable changes to this project are documented here. Dates are release dates.
 
-## Unreleased
+## 1.6.0 (16 November 2026)
 
-Everything Claudy 1.5.8 and 1.6.0 brought, on Windows.
+Claudio catches up with Claudy 1.6.0: the same features, on Windows, under the same version
+number from now on.
 
 ### Added
 
-- **Sessions tab.** Every Claude Code session open on the PC, read from Claude Code's own
-  session files: the ones waiting for your answer first, in amber, then those at work, then those
-  at rest, each with the agents it runs. A click unfolds a session (its folder, its app, its last
-  prompt), with **Open**, which brings forward the app it runs in (Windows Terminal, VS Code,
-  Cursor, a console…), and **Interrupt**, which sends it Ctrl+C after a confirmation naming it.
-  Each agent has its own Claudy and colour, its track over the last ten minutes, writes in coral,
-  silence called out after three minutes, done for ten minutes with the files it wrote.
-- **Agent room.** A window of its own, opened from the menus, the Sessions tab or Ctrl+Alt+R: one
-  open space per project, every agent at a desk in the area of its work, its screen showing what
-  it does, read from its tool calls; Claudy at the centre desk with the session quota as a ring.
-  The window's sky, sun, moon, city lights and weather follow the PC's clock and the date.
-- **Notifications**, one switch each: session at 80 %, limit before the reset, session back, a
-  session waiting for you, an agent gone silent, an agent done. A click on one about a session
-  opens its app; about an agent, its desk.
-- **Ctrl+Alt+C** shows or hides Claudio from any app; the menus say when another app holds it.
-- **Export usage as CSV…**: the last seven days, one line per hour, project and model, with the
-  list price of those tokens. Local transcripts only, never the demo set.
-- **MCP servers left behind** in the Ports tab, with the memory each one holds, killed as a tree.
-- The short card above the clock and the island list the waiting sessions and the agents; next to
-  the clock, an amber hand and the lead agent's Claudy join the figure.
+- **Agent room.** "Open agent room" opens a window in the middle of the screen: one open space
+  per project, Claudy at the centre desk for the session, its agents at the desks around, in the
+  area of their work (writing, commands, research, and a spare area that takes the overflow).
+  Each screen shows what its agent does, read from the tool, the file and the command of its
+  last call: code, docs, spec, design, search, review, web, tests, build, benchmark, install,
+  git, data, infra, deploy, security, or the name of the skill or MCP server at work. An agent
+  whose work changes walks to another desk. The window tells the hour: the sun in the middle at
+  noon, the city's windows lighting up as it sets, nearly all lit at nine, going out towards
+  midnight. The room follows the PC's clock. A robot vacuum leaves its dock by the back wall,
+  goes round the corridors and comes back to charge. Claudy's first screen shows what the
+  session itself does between two agents. A click on a desk opens its agent's card: what it was
+  asked, what it does, its last calls, the files it wrote. An agent that is done goes and sits on
+  the sofa, and leaves by the door when it leaves the list. Past 90 % of the session quota the
+  racks turn red and the room's edges glow. A click on Claudy's second screen opens a summary of
+  the session in sentences, with Open and Interrupt.
+- **More of the agent room.** Ctrl+Alt+R opens it from any app, and `Claudio.exe --room` opens it
+  at launch. With several projects open, "All" shows every one as a small room, a click enters
+  it. A banner about an agent, silent or done, opens the room on its desk. An agent that waits
+  dozes at its desk. The window has weather: each day its own, decided by its date, rain some
+  days and snow in winter, or the one chosen in the room's menu. A cross beside a room's name,
+  under the pointer, puts the room away; the room's menu brings it back.
+- **Sessions.** A third tab lists every Claude Code session open on the PC: the ones waiting for
+  an answer first, in amber, with what they wait for ("Permission prompt"); then those at work,
+  then those at rest with how long they have been idle. Each session shows the subagents it runs
+  underneath: what each was asked, for how long, the file it is touching and its last ten
+  minutes as a track, with its own Claudy in its own colour. Read from Claude Code's own files,
+  nothing to install. Sessions a program drives through the Agent SDK only show while they run
+  agents. Sessions inside WSL are not listed: Windows cannot check their processes.
+- **Open a session's window.** "Open" brings forward the app a session runs in (Windows
+  Terminal, VS Code, Cursor, a JetBrains IDE, or the console it was opened in), found up its
+  process tree. A session unfolds to its folder, its app, the last thing asked of it, and the
+  buttons.
+- **Interrupt a session from the card.** After a confirmation that names the session, Claudio
+  sends its console Ctrl+C, which stops the turn and every agent of that session and leaves the
+  session open. The process is held and checked against the session's recorded start time first,
+  so a pid reused by another process is never signalled.
+- **Agents that stall, agents that are done.** Three minutes without a word and the row says so,
+  in amber: "silent 4 min". A finished agent stays ten minutes with the number of files it wrote.
+- **A session waiting for you shows everywhere.** The open island and the short card above the
+  clock put it first, with "Open"; the island at rest turns amber with a raised hand, and a click
+  on the ears opens the session's app; next to the clock, an amber hand joins the figure, and the
+  lead agent's Claudy with the count while agents run.
+- **Notifications.** Session at 80 %, the limit coming before the reset at the current pace, the
+  session back after a full window, a session waiting for you, an agent gone silent, an agent
+  done (off by default). One switch each under Notifications in the right-click menu. A click on
+  a banner about a session brings its app forward; a waiting banner is taken back once the
+  session moves on.
+- **Ctrl+Alt+C shows or hides Claudio** from any app: the card, the short card or the island,
+  wherever it stands. When another app holds the shortcut, the menu says so.
+- **MCP servers left behind.** The Ports tab lists the MCP servers a closed Claude Code session
+  left running, with the memory each one holds, and kills them like an orphaned port.
+- **Export usage as CSV.** The last seven days from the local transcripts, one line per hour,
+  project and model: the four token counts and what they weigh at list price. Never the demo set.
+- **The short lists say more.** The short card and the island list four agents with their state
+  in colour, and "+N more" opens the widget. The island at rest shows the count alone, in the
+  lead agent's colour.
 
 ### Changed
 
-- **The card follows Claudy's new look**: the session in a tile of its own, the weekly windows and
-  the week's curve on the glass apart by hairlines, sentence-case labels, three tones of text,
-  count badges and pill buttons, a warm veil over the glass, no more glows or gradients.
-- One colour per window: coral for the session, sky for the week, violet for Sonnet, teal for
-  Haiku. Amber and red now only warn.
-- The icon sits on a cream tile.
-- The mascot holds still in a hidden window, and next to the clock it types at half pace and is
-  redrawn only when its frame changes.
+- **Claudy's new look.** Windows has no Liquid Glass: the card takes Claudy's layout on its
+  window material under a warm veil, so the text stays readable over any wallpaper. The session,
+  the figure you come for, sits in a coral tile of its own; the weekly and per-model windows and
+  the week's curve lie on the glass, apart by a hairline. A session waiting for you is the only
+  other block.
+- **One colour per window.** Coral for the session, sky for the week, violet for Sonnet, teal for
+  Haiku. Amber and red no longer name a window: a gauge only turns amber or red when it nears its
+  limit.
+- **Easier to read.** Labels in sentence case instead of spaced capitals, no text under 11 points,
+  three text tones, ports and file names in monospace, no more glows, gradient figures or pills
+  around every count. The week's totals now sit in the curve's header.
+- **The icon sits on a cream tile**, as Claudy's.
+- **Release notes.** Each GitHub release now carries its section of this changelog.
+
+### Fixed
+
+- **Claudio at rest costs less.** The mascot stops moving in a window nobody sees: a hidden
+  card, a closed short card, the agent room once closed. The icon next to the clock is only
+  redrawn when its frame changes and types at half the pace, and the wave is redrawn at each of
+  its frames instead of thirty times a second.
+- **A damaged Claude Code file costs one value, not the list.** A date no date can hold, or half
+  an emoji cut in a transcript, no longer stops the sessions from being read.
 
 ## 1.0.3 (7 October 2026)
 

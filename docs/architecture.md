@@ -100,5 +100,5 @@ apply it when Claudio quits, or at once from the card (`Services/UpdateChecker.c
 Every push builds both installers in CI (*Claudio-Setup-win-x64* artifact). Releasing is changing
 `<Version>` in `Directory.Build.props` and merging it into `main`: the *Release* workflow tags that
 version (a suffix such as `-beta.1` makes it a pre-release), builds both installers again, attests their provenance (`gh attestation verify`), and publishes the release with Velopack's update
-packages. A version already released is never built twice. The icon is Claudy's: `Scripts/make-icon.py` packs
+packages. The release notes are the version's section of `CHANGELOG.md`. A version already released is never built twice. The icon is Claudy's: `Scripts/make-icon.py` packs
 `claudy/Design/icon/*.png` into `Assets/Claudio.ico`.

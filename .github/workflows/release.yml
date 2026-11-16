@@ -49,6 +49,17 @@ jobs:
       - name: Velopack
         if: steps.version.outputs.skip != 'true'
         run: dotnet tool install -g vpk --version 1.2.161
+      - name: Release notes
+        if: steps.version.outputs.skip != 'true'
+        shell: pwsh
+        run: |
+          # The release says what changed, as Claudy's do: the version's section of CHANGELOG.md,
+          # which Velopack carries into the package and onto the GitHub release.
+          $version = [regex]::Escape($env:VERSION.TrimStart('v'))
+          $text = Get-Content CHANGELOG.md -Raw
+          $match = [regex]::Match($text, '(?ms)^## ' + $version + '[ (][^\n]*\n(.*?)(?=^## |\z)')
+          if (-not $match.Success) { throw "CHANGELOG.md has no section for $env:VERSION." }
+          Set-Content -Path release-notes.md -Value $match.Groups[1].Value.Trim() -Encoding utf8
       - name: Build and pack
         if: steps.version.outputs.skip != 'true'
         shell: pwsh
@@ -70,7 +81,7 @@ jobs:
             vpk download github --repoUrl "https://github.com/${{ github.repository }}" --token "${{ github.token }}" --channel $($target.Rid) --outputDir releases
             vpk pack --packId Claudio --packVersion $version --packDir $publish --mainExe Claudio.exe `
               --packTitle Claudio --packAuthors Endikk --icon src/Claudio.App/Assets/Claudio.ico `
-              --channel $($target.Rid) --shortcuts Desktop,StartMenuRoot --outputDir releases
+              --channel $($target.Rid) --shortcuts Desktop,StartMenuRoot --releaseNotes release-notes.md --outputDir releases
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - name: Attest provenance
