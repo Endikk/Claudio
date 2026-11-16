@@ -3,8 +3,8 @@
 
     python Scripts/make-demo-video.py film
 
-Reads <film>/frames/<scene>/<ms>.png and writes docs/claudio-demo.gif (English captions) and
-docs/claudio-demo.fr.gif (French captions); the app itself stays in English in both, as in
+Reads <film>/frames/<scene>/<ms>.png and writes docs/video-readme.gif (English captions) and
+docs/video-readme.fr.gif (French captions); the app itself stays in English in both, as in
 Claudy's. Claudy's recording sits on a red, blue and green wallpaper; Claudio's on a Windows-like
 bloom of navy, blue, violet and cyan. The mascot of the title, the explosion and the end is drawn
 from Claudy's exported frames, as Scripts/make-mascot-gifs.py draws it.
@@ -412,7 +412,7 @@ def save(frames, scenes, path):
 
 def main():
     film = Path(sys.argv[1] if len(sys.argv) > 1 else "film").resolve()
-    for language, name in (("en", "claudio-demo.gif"), ("fr", "claudio-demo.fr.gif")):
+    for language, name in (("en", "video-readme.gif"), ("fr", "video-readme.fr.gif")):
         frames, scenes = render(language, film)
         save(frames, scenes, DOCS / name)
 

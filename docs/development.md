@@ -32,8 +32,8 @@ sessions, agents, ports and quotas: the strip, the card and its details, the Ses
 tabs, the island, the agent room, and the mascot at 100 %. Nothing real is read or touched, and it
 takes nobody's keyboard. `Scripts/record-demo.ps1` runs it in a settings folder of its own and
 films its windows with `PrintWindow`, whatever lies over them; `Scripts/make-demo-video.py` lays
-the frames on the wallpaper with the captions and writes `docs/claudio-demo.gif` and
-`docs/claudio-demo.fr.gif`, as Claudy's recording, in Claudio's own colours.
+the frames on the wallpaper with the captions and writes `docs/video-readme.gif` and
+`docs/video-readme.fr.gif`, as Claudy's recording, in Claudio's own colours.
 
 ```powershell
 dotnet build src/Claudio.App -p:Platform=x64

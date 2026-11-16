@@ -14,7 +14,7 @@
 
 <p align="center"><img src="docs/claudio-typing.gif" width="132" alt="Claudio, la mascotte en pixel art, qui tape sur son ordinateur"></p>
 
-<p align="center"><img src="docs/claudio-demo.fr.gif" width="620" alt="Claudio en une minute : la bande compacte, la carte d'usage et son détail, les onglets Sessions et Ports, l'îlot en haut de l'écran, la salle des agents où chaque agent a son bureau, et la mascotte à 100 %"></p>
+<p align="center"><img src="docs/video-readme.fr.gif" width="620" alt="Claudio en une minute : la bande compacte, la carte d'usage et son détail, les onglets Sessions et Ports, l'îlot en haut de l'écran, la salle des agents où chaque agent a son bureau, et la mascotte à 100 %"></p>
 
 </div>
 

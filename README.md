@@ -14,7 +14,7 @@
 
 <p align="center"><img src="docs/claudio-typing.gif" width="132" alt="Claudio, the pixel mascot, typing at its laptop"></p>
 
-<p align="center"><img src="docs/claudio-demo.gif" width="620" alt="Claudio in a minute: the compact strip, the usage card and its details, the Sessions and Ports tabs, the island at the top of the screen, the agent room where each agent sits at a desk, and the mascot at 100 %"></p>
+<p align="center"><img src="docs/video-readme.gif" width="620" alt="Claudio in a minute: the compact strip, the usage card and its details, the Sessions and Ports tabs, the island at the top of the screen, the agent room where each agent sits at a desk, and the mascot at 100 %"></p>
 
 </div>
 
